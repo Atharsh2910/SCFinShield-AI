@@ -1,6 +1,5 @@
 from functools import lru_cache
-
-from pinecone import Pinecone
+from typing import Any
 
 from backend.core.config import get_settings
 
@@ -10,7 +9,14 @@ class PineconeConfigurationError(RuntimeError):
 
 
 @lru_cache()
-def get_pinecone_client() -> Pinecone:
+def get_pinecone_client() -> Any:
+    try:
+        from pinecone import Pinecone
+    except ImportError as exc:
+        raise PineconeConfigurationError(
+            "Pinecone client is not installed. Install project requirements first."
+        ) from exc
+
     settings = get_settings()
     if not settings.pinecone_api_key:
         raise PineconeConfigurationError("Pinecone credentials are missing. Set PINECONE_API_KEY.")
