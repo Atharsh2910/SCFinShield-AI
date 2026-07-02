@@ -2,30 +2,25 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from langchain_anthropic import ChatAnthropic
 from langchain.memory import ConversationBufferWindowMemory
 
 from backend.core.config import get_settings
+from backend.services.rag.retrieval_chain import build_analyst_rag_chain, get_llm
 
 _sessions: Dict[str, Dict[str, Any]] = {}
 
 
 def get_or_create_session(investigation_id: str) -> Dict[str, Any]:
     if investigation_id not in _sessions:
-        settings = get_settings()
         memory = ConversationBufferWindowMemory(
             memory_key="chat_history",
             return_messages=True,
             k=10,
         )
-        llm = ChatAnthropic(
-            model=settings.claude_model,
-            anthropic_api_key=settings.anthropic_api_key,
-            max_tokens=800,
-        )
+        settings = get_settings()
         _sessions[investigation_id] = {
             "memory": memory,
-            "llm": llm,
+            "llm_enabled": bool(settings.anthropic_api_key),
             "fraud_state": {},
             "messages": [],
         }
@@ -56,26 +51,54 @@ async def ask_analyst_question(
 
     augmented_question = f"{context}\n\nAnalyst question: {question}"
 
-    llm = session["llm"]
     memory: ConversationBufferWindowMemory = session["memory"]
+    history = memory.load_memory_variables({}).get("chat_history", [])
+    history_context = "\n".join(
+        getattr(message, "content", str(message))
+        for message in history[-6:]
+    )
 
-    _ = memory.load_memory_variables({})
+    prompt = augmented_question if not history_context else f"{history_context}\n\n{augmented_question}"
 
-    response = await llm.ainvoke(augmented_question)
-    answer = response.content
+    answer = ""
+    citations: list[dict[str, Any]] = []
+    try:
+        rag_chain = build_analyst_rag_chain()
+        result = rag_chain.invoke({"query": prompt})
+        answer = str(result.get("result") or "").strip()
+        for doc in result.get("source_documents", []) or []:
+            metadata = getattr(doc, "metadata", {}) or {}
+            citations.append(
+                {
+                    "title": metadata.get("title", ""),
+                    "source": metadata.get("source", ""),
+                    "category": metadata.get("category", ""),
+                }
+            )
+    except Exception:
+        settings = get_settings()
+        if settings.anthropic_api_key:
+            response = await get_llm().ainvoke(prompt)
+            answer = str(response.content).strip()
+        else:
+            answer = (
+                "Analyst Q&A is in fallback mode. The current investigation state has been captured, "
+                "but retrieval-backed answers will become available after Pinecone and Anthropic credentials are configured."
+            )
 
     memory.save_context(
         {"input": question},
         {"output": answer},
     )
 
-    session["messages"].append({"role": "user", "content": question})
-    session["messages"].append({"role": "assistant", "content": answer})
+    session["messages"].append({"role": "user", "content": question, "citations": []})
+    session["messages"].append({"role": "assistant", "content": answer, "citations": citations})
 
     return {
         "answer": answer,
         "investigation_id": investigation_id,
         "message_count": len(session["messages"]),
+        "citations": citations,
     }
 
 

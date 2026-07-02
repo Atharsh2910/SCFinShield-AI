@@ -3,9 +3,11 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from backend.core.config import get_settings
+from backend.core.constants import PineconeNamespace
 from backend.db.neo4j import get_neo4j_driver
 from backend.db.pinecone import get_pinecone_index
 from backend.services.ml.model_loader import ModelRegistry
+from backend.services.rag.knowledge_base import load_documents_from_directory
 
 router = APIRouter(tags=["health"])
 
@@ -57,5 +59,24 @@ async def health_dependencies() -> dict:
     return {
         "neo4j": neo4j_ok,
         "pinecone": pinecone_ok,
+    }
+
+
+@router.get("/health/knowledge-base")
+async def health_knowledge_base() -> dict:
+    """
+    Return lightweight readiness information for the local and vectorized KB.
+    """
+    docs = load_documents_from_directory("docs")
+    pinecone_ok = False
+    try:
+        pinecone_ok = get_pinecone_index() is not None
+    except Exception:
+        pinecone_ok = False
+
+    return {
+        "local_documents_found": len(docs),
+        "default_namespace": PineconeNamespace.REGULATIONS,
+        "pinecone_ready": pinecone_ok,
     }
 

@@ -104,7 +104,7 @@ async def ask(
     return InvestigationAnswer(
         session_id=session_id,
         answer=result.get("answer") or "",
-        citations=[],
+        citations=result.get("citations") or [],
     )
 
 

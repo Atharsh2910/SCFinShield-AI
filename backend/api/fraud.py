@@ -10,6 +10,7 @@ from backend.db.supabase import get_db
 from backend.schemas.fraud import AnalystDecisionUpdate, FraudAnalysisResponse, FraudCaseResponse
 from backend.services.langgraph.workflow import run_fraud_investigation
 from backend.services.reporting.case_manager import create_fraud_case, generate_sar_draft, update_analyst_decision
+from backend.services.rag.knowledge_base import upsert_fraud_cases_to_pinecone
 
 router = APIRouter()
 
@@ -126,4 +127,36 @@ async def update_case(
 async def sar_draft(case_id: str, db: Client = Depends(get_db)) -> dict[str, Any]:
     sar = await generate_sar_draft(case_id=case_id, db_client=db)
     return {"case_id": case_id, "sar_draft": sar}
+
+
+@router.post("/fraud/cases/{case_id}/reindex")
+async def reindex_case(case_id: str, db: Client = Depends(get_db)) -> dict[str, Any]:
+    """
+    Reindex a fraud case into the Pinecone fraud_cases namespace.
+    Useful after updating analyst notes or historical backfills.
+    """
+    result = db.table("fraud_cases").select("*").eq("id", case_id).limit(1).execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Fraud case not found")
+
+    case = result.data[0]
+    document = {
+        "id": str(case.get("id") or case_id),
+        "title": f"Fraud Case {case.get('case_number', case_id)}",
+        "source": f"fraud_case:{case_id}",
+        "category": "fraud_case",
+        "content": (
+            f"Case Number: {case.get('case_number', '')}\n"
+            f"Invoice ID: {case.get('invoice_id', '')}\n"
+            f"Decision: {case.get('decision', '')}\n"
+            f"Severity: {case.get('severity', '')}\n"
+            f"Fraud Score: {case.get('fraud_score', 0)}\n"
+            f"Fraud Patterns: {case.get('fraud_patterns', [])}\n"
+            f"Alert Narrative: {case.get('alert_narrative', '')}\n"
+            f"Analyst Notes: {case.get('analyst_notes', '')}\n"
+            f"Regulation Citations: {case.get('regulation_citations', [])}\n"
+        ),
+    }
+    vector_count = upsert_fraud_cases_to_pinecone([document])
+    return {"case_id": case_id, "vector_count": vector_count}
 

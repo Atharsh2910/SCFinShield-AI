@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.api import fraud, health, invoice, graph, investigation, dashboard, simulator
+from backend.api import fraud, health, invoice, graph, investigation, dashboard, simulator, knowledge_base
 from backend.core.config import get_settings
 from backend.core.logger import setup_logger
 from backend.db.neo4j import close_neo4j_driver
@@ -50,6 +50,7 @@ app.include_router(graph.router, prefix=settings.api_v1_str, tags=["graph"])
 app.include_router(investigation.router, prefix=settings.api_v1_str, tags=["investigation"])
 app.include_router(dashboard.router, prefix=settings.api_v1_str, tags=["dashboard"])
 app.include_router(simulator.router, prefix=settings.api_v1_str, tags=["simulator"])
+app.include_router(knowledge_base.router, prefix=settings.api_v1_str, tags=["knowledge-base"])
 
 
 @app.get("/")

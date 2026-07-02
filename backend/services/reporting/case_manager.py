@@ -5,6 +5,62 @@ from typing import Any
 
 from backend.core.config import get_settings
 from backend.core.constants import AlertSeverity, FraudDecision
+from backend.services.rag.knowledge_base import upsert_fraud_cases_to_pinecone
+
+
+def _build_case_summary_document(case_record: dict[str, Any]) -> dict[str, Any]:
+    case_id = str(case_record.get("id") or case_record.get("case_number") or _generate_case_number())
+    narrative = str(case_record.get("alert_narrative") or "")
+    patterns = case_record.get("fraud_patterns") or []
+    analyst_notes = case_record.get("analyst_notes") or ""
+    citations = case_record.get("regulation_citations") or []
+    content = (
+        f"Case Number: {case_record.get('case_number', '')}\n"
+        f"Invoice ID: {case_record.get('invoice_id', '')}\n"
+        f"Decision: {case_record.get('decision', '')}\n"
+        f"Severity: {case_record.get('severity', '')}\n"
+        f"Fraud Score: {case_record.get('fraud_score', 0)}\n"
+        f"Primary Signal: {case_record.get('primary_signal', '')}\n"
+        f"Fraud Patterns: {patterns}\n"
+        f"Alert Narrative: {narrative}\n"
+        f"Analyst Decision: {case_record.get('analyst_decision', '')}\n"
+        f"Analyst Notes: {analyst_notes}\n"
+        f"Regulation Citations: {citations}\n"
+    )
+    return {
+        "id": case_id,
+        "title": f"Fraud Case {case_record.get('case_number', case_id)}",
+        "source": f"fraud_case:{case_record.get('id', case_id)}",
+        "category": "fraud_case",
+        "content": content,
+    }
+
+
+def _best_effort_sync_case_to_vector_db(case_record: dict[str, Any]) -> None:
+    try:
+        upsert_fraud_cases_to_pinecone([_build_case_summary_document(case_record)])
+    except Exception:
+        # Safe no-op when Pinecone is not configured yet.
+        pass
+
+
+def _best_effort_audit_log(db_client, event_type: str, payload: dict[str, Any]) -> None:
+    try:
+        db_client.table("audit_log").insert(
+            {
+                "event_type": event_type,
+                "entity_type": "fraud_case",
+                "entity_id": payload.get("id"),
+                "invoice_id": payload.get("invoice_id"),
+                "case_id": payload.get("id"),
+                "actor": "system",
+                "payload": payload,
+            }
+        ).execute()
+    except Exception:
+        pass
+
+
 def _severity_from_score(score: float) -> str:
     if score >= 0.9:
         return AlertSeverity.CRITICAL
@@ -76,10 +132,16 @@ async def create_fraud_case(
             .eq("id", existing.data[0]["id"])
             .execute()
         )
-        return updated.data[0]
+        case_record = updated.data[0]
+        _best_effort_audit_log(db_client, "fraud_case_updated", case_record)
+        _best_effort_sync_case_to_vector_db(case_record)
+        return case_record
 
     inserted = db_client.table("fraud_cases").insert(payload).execute()
-    return inserted.data[0]
+    case_record = inserted.data[0]
+    _best_effort_audit_log(db_client, "fraud_case_created", case_record)
+    _best_effort_sync_case_to_vector_db(case_record)
+    return case_record
 
 
 async def generate_sar_draft(case_id: str, db_client) -> str:
@@ -172,6 +234,7 @@ async def update_analyst_decision(
     updated = db_client.table("fraud_cases").update(payload).eq("id", case_id).execute()
     if not updated.data:
         return {}
+    _best_effort_sync_case_to_vector_db(updated.data[0])
 
     # Best-effort audit log
     try:
