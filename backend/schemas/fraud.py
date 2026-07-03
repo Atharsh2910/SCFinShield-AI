@@ -28,7 +28,13 @@ class FraudCaseResponse(BaseModel):
     severity: str
     fraud_patterns: list[str]
     alert_narrative: str
+    ensemble_scores: dict[str, float] = Field(default_factory=dict)
+    shap_values: dict[str, float] = Field(default_factory=dict)
+    cascade_path: list[dict[str, Any]] = Field(default_factory=list)
+    regulation_citations: list[dict[str, Any]] = Field(default_factory=list)
     analyst_decision: str | None = None
+    analyst_notes: str | None = None
+    sar_draft: str | None = None
     created_at: str
 
 

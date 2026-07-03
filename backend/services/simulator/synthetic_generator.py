@@ -13,6 +13,9 @@ ScenarioName = Literal[
     "duplicate_financing",
     "carousel_trade",
     "cascade_amplification",
+    "velocity_anomaly",
+    "ghost_supplier",
+    "clean",
 ]
 
 
@@ -41,9 +44,12 @@ def _scenario_phantom(n: int) -> List[Dict[str, Any]]:
     for i in range(n):
         supplier = fake.company()
         buyer = fake.company()
-        amount = random.uniform(5_00_000, 5_00_00_0)  # 5L to 50L
+        amount = random.uniform(5_00_000, 50_00_000)  # 5L to 50L
         dt = datetime.now(timezone.utc).date().isoformat()
-        invoices.append(_invoice_event_base(idx=i, supplier=supplier, buyer=buyer, lender=lender, amount=amount, dt=dt))
+        invoice = _invoice_event_base(idx=i, supplier=supplier, buyer=buyer, lender=lender, amount=amount, dt=dt)
+        invoice["po_number"] = f"PO-NONEXIST-{random.randint(100000, 999999)}"
+        invoice["metadata"] = {"scenario": "phantom_invoice"}
+        invoices.append(invoice)
     return invoices
 
 
@@ -117,11 +123,62 @@ def _scenario_cascade(n: int) -> List[Dict[str, Any]]:
     return invoices
 
 
+def _scenario_velocity(n: int) -> List[Dict[str, Any]]:
+    lender = "VelocityLender"
+    supplier = "VelocitySupplier"
+    buyer = fake.company()
+    now = datetime.now(timezone.utc)
+    invoices: List[Dict[str, Any]] = []
+    for i in range(n):
+        # Burst of many invoices in a short period
+        dt = (now + timedelta(minutes=i * 5)).date().isoformat()
+        amount = random.uniform(1_00_000, 8_00_000)
+        invoice = _invoice_event_base(idx=i, supplier=supplier, buyer=buyer, lender=lender, amount=amount, dt=dt)
+        invoice["metadata"] = {"scenario": "velocity_anomaly"}
+        invoices.append(invoice)
+    return invoices
+
+
+def _scenario_ghost_supplier(n: int) -> List[Dict[str, Any]]:
+    lender = "GhostLender"
+    invoices: List[Dict[str, Any]] = []
+    for i in range(n):
+        supplier = f"GhostSupplier{i}"
+        buyer = fake.company()
+        amount = random.uniform(2_00_000, 9_00_000)
+        dt = datetime.now(timezone.utc).date().isoformat()
+        invoice = _invoice_event_base(idx=i, supplier=supplier, buyer=buyer, lender=lender, amount=amount, dt=dt)
+        invoice["metadata"] = {
+            "scenario": "ghost_supplier",
+            "supplier_age_days": random.randint(1, 20),
+            "is_shell_like": True,
+        }
+        invoices.append(invoice)
+    return invoices
+
+
+def _scenario_clean(n: int) -> List[Dict[str, Any]]:
+    lender = "CleanLender"
+    invoices: List[Dict[str, Any]] = []
+    for i in range(n):
+        supplier = fake.company()
+        buyer = fake.company()
+        amount = random.uniform(1_00_000, 5_00_000)
+        dt = datetime.now(timezone.utc).date().isoformat()
+        invoice = _invoice_event_base(idx=i, supplier=supplier, buyer=buyer, lender=lender, amount=amount, dt=dt)
+        invoice["metadata"] = {"scenario": "clean"}
+        invoices.append(invoice)
+    return invoices
+
+
 SCENARIO_TEMPLATES: dict[str, Dict[str, Any]] = {
     "phantom_invoice": {"description": "Invented supplier/buyer pairs for phantom invoice detection."},
     "duplicate_financing": {"description": "Same invoice/PO financed by multiple lenders (dedup signals)."},
     "carousel_trade": {"description": "Suppliers/buyers arranged in a cycle to trigger carousel detection."},
     "cascade_amplification": {"description": "Multiple invoices to the same buyer near each other to trigger cascade tracing."},
+    "velocity_anomaly": {"description": "Rapid burst of invoices from a supplier within a narrow time window."},
+    "ghost_supplier": {"description": "Newly formed/shell-like suppliers requesting financing."},
+    "clean": {"description": "Baseline clean invoices with low-risk characteristics."},
 }
 
 
@@ -139,6 +196,12 @@ def generate_synthetic_invoices(
         return _scenario_carousel(n)
     if scenario == "cascade_amplification":
         return _scenario_cascade(n)
+    if scenario == "velocity_anomaly":
+        return _scenario_velocity(n)
+    if scenario == "ghost_supplier":
+        return _scenario_ghost_supplier(n)
+    if scenario == "clean":
+        return _scenario_clean(n)
     # Fallback
     return _scenario_phantom(n)
 

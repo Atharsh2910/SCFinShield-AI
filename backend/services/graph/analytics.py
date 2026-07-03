@@ -76,6 +76,7 @@ async def get_entity_network(entity_id: str, depth: int = 2) -> dict[str, Any]:
             "id": node.get("id"),
             "label": node.get("name", ""),
             "type": node.get("type", "entity"),
+            "tier": node.get("tier"),
             "risk_score": float(node.get("risk_score", 0.0) or 0.0),
             "is_flagged": bool(node.get("is_flagged", False)),
         }

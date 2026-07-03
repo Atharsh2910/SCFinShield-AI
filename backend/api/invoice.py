@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from datetime import date
 from typing import Any
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from supabase import Client
 
 from backend.core.exceptions import FileParsingError
@@ -56,92 +57,107 @@ async def upload_invoice(
     except FileParsingError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    pinecone_index = get_pinecone_index()
+    errors: list[str] = []
     created_ids: list[str] = []
 
-    for raw in raw_records:
-        # Ensure lender name is present (optional in many upload payloads)
-        raw["lender_name"] = raw.get("lender_name") or lender_name
-        invoice_event = normalise_invoice(raw, source_format="upload")
+    pinecone_index = None
+    try:
+        pinecone_index = get_pinecone_index()
+    except Exception:
+        # Allow upload to proceed even when vector DB is unavailable.
+        pinecone_index = None
 
-        supplier_id = await get_or_create_entity(
-            db,
-            entity_type="supplier",
-            name=invoice_event["supplier_name"],
-        )
-        buyer_id = await get_or_create_entity(
-            db,
-            entity_type="buyer",
-            name=invoice_event["buyer_name"],
-        )
+    for index, raw in enumerate(raw_records):
+        try:
+            # Ensure lender name is present (optional in many upload payloads)
+            raw["lender_name"] = raw.get("lender_name") or lender_name
+            invoice_event = normalise_invoice(raw, source_format="upload")
 
-        lender_id: str | None = None
-        if invoice_event.get("lender_name"):
-            lender_id = await get_or_create_entity(
+            supplier_id = await get_or_create_entity(
                 db,
-                entity_type="lender",
-                name=invoice_event["lender_name"],
+                entity_type="supplier",
+                name=invoice_event["supplier_name"],
+            )
+            buyer_id = await get_or_create_entity(
+                db,
+                entity_type="buyer",
+                name=invoice_event["buyer_name"],
             )
 
-        sha256 = generate_sha256_fingerprint(invoice_event)
+            lender_id: str | None = None
+            if invoice_event.get("lender_name"):
+                lender_id = await get_or_create_entity(
+                    db,
+                    entity_type="lender",
+                    name=invoice_event["lender_name"],
+                )
 
-        invoice_payload = {
-            "invoice_number": invoice_event["invoice_number"],
-            "supplier_id": supplier_id,
-            "buyer_id": buyer_id,
-            "lender_id": lender_id,
-            "po_number": invoice_event.get("po_number"),
-            "grn_number": invoice_event.get("grn_number"),
-            "invoice_date": invoice_event["invoice_date"],
-            "due_date": invoice_event.get("due_date"),
-            "amount": float(invoice_event.get("amount", 0) or 0),
-            "currency": invoice_event.get("currency") or "INR",
-            "line_items": invoice_event.get("line_items", []),
-            "status": "pending",
-            "sha256_fingerprint": sha256,
-            "fraud_score": 0.0,
-            "fraud_decision": "PASS",
-            "fraud_patterns": [],
-            "metadata": invoice_event.get("raw") or {},
-            "file_type": invoice_event.get("source_format") or "upload",
-        }
+            sha256 = generate_sha256_fingerprint(invoice_event)
 
-        insert_result = db.table("invoices").insert(invoice_payload).execute()
-        if not insert_result.data:
-            continue
-
-        invoice_row = insert_result.data[0]
-        invoice_id = str(invoice_row["id"])
-        created_ids.append(invoice_id)
-
-        # Upsert graph
-        await upsert_invoice_graph(invoice_event, invoice_id, supplier_id, buyer_id, lender_id)
-
-        # Register fingerprint in consortium table
-        db.table("fingerprint_registry").upsert(
-            {
-                "sha256_hash": sha256,
-                "invoice_number": invoice_event.get("invoice_number"),
-                "amount": float(invoice_event.get("amount", 0) or 0),
+            invoice_payload = {
+                "invoice_number": invoice_event["invoice_number"],
                 "supplier_id": supplier_id,
                 "buyer_id": buyer_id,
                 "lender_id": lender_id,
-                "invoice_date": invoice_event.get("invoice_date"),
-                "status": "active",
+                "po_number": invoice_event.get("po_number"),
+                "grn_number": invoice_event.get("grn_number"),
+                "invoice_date": invoice_event["invoice_date"],
+                "due_date": invoice_event.get("due_date"),
+                "amount": float(invoice_event.get("amount", 0) or 0),
+                "currency": invoice_event.get("currency") or "INR",
+                "line_items": invoice_event.get("line_items", []),
+                "status": "pending",
+                "sha256_fingerprint": sha256,
+                "fraud_score": 0.0,
+                "fraud_decision": "PASS",
+                "fraud_patterns": [],
+                "metadata": invoice_event.get("raw") or {},
+                "file_type": invoice_event.get("source_format") or "upload",
             }
-        ).execute()
 
-        # Upsert embedding in Pinecone
-        upsert_invoice_embedding(invoice_id, invoice_event, pinecone_index)
+            insert_result = db.table("invoices").insert(invoice_payload).execute()
+            if not insert_result.data:
+                errors.append(f"record {index}: failed to create invoice record")
+                continue
+
+            invoice_row = insert_result.data[0]
+            invoice_id = str(invoice_row["id"])
+            created_ids.append(invoice_id)
+
+            # Upsert graph
+            await upsert_invoice_graph(invoice_event, invoice_id, supplier_id, buyer_id, lender_id)
+
+            # Register fingerprint in consortium table
+            db.table("fingerprint_registry").upsert(
+                {
+                    "sha256_hash": sha256,
+                    "invoice_number": invoice_event.get("invoice_number"),
+                    "amount": float(invoice_event.get("amount", 0) or 0),
+                    "supplier_id": supplier_id,
+                    "buyer_id": buyer_id,
+                    "lender_id": lender_id,
+                    "invoice_date": invoice_event.get("invoice_date"),
+                    "status": "active",
+                }
+            ).execute()
+
+            # Upsert embedding in Pinecone
+            if pinecone_index is not None:
+                try:
+                    upsert_invoice_embedding(invoice_id, invoice_event, pinecone_index)
+                except Exception:
+                    errors.append(f"record {index}: invoice created but embedding upsert failed")
+        except Exception as exc:
+            errors.append(f"record {index}: {exc}")
 
     if not created_ids:
-        raise HTTPException(status_code=500, detail="No invoices were created from the upload")
+        raise HTTPException(status_code=500, detail={"message": "No invoices were created from the upload", "errors": errors})
 
     return InvoiceUploadResponse(
         invoice_ids=created_ids,
         accepted_count=len(created_ids),
-        rejected_count=0,
-        errors=[],
+        rejected_count=max(len(raw_records) - len(created_ids), 0),
+        errors=errors,
     )
 
 
@@ -223,8 +239,25 @@ def _invoice_row_to_response(row: dict[str, Any], supplier_name: str, buyer_name
 @router.get("/invoices/", response_model=list[InvoiceResponse])
 async def list_invoices(
     db: Client = Depends(get_db),
+    status: str | None = Query(default=None),
+    fraud_decision: str | None = Query(default=None),
+    lender_id: str | None = Query(default=None),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
 ) -> list[InvoiceResponse]:
-    result = db.table("invoices").select("*").limit(100).execute()
+    query = db.table("invoices").select("*")
+    if status:
+        query = query.eq("status", status)
+    if fraud_decision:
+        query = query.eq("fraud_decision", fraud_decision)
+    if lender_id:
+        query = query.eq("lender_id", lender_id)
+    if date_from:
+        query = query.gte("invoice_date", date_from.isoformat())
+    if date_to:
+        query = query.lte("invoice_date", date_to.isoformat())
+
+    result = query.limit(200).execute()
     rows = result.data or []
     responses: list[InvoiceResponse] = []
     for row in rows:

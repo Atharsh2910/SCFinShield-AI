@@ -6,6 +6,7 @@ from backend.core.config import get_settings
 from backend.core.constants import PineconeNamespace
 from backend.db.neo4j import get_neo4j_driver
 from backend.db.pinecone import get_pinecone_index
+from backend.db.supabase import get_supabase_client
 from backend.services.ml.model_loader import ModelRegistry
 from backend.services.rag.knowledge_base import load_documents_from_directory
 
@@ -15,14 +16,30 @@ router = APIRouter(tags=["health"])
 @router.get("/health")
 async def health_check() -> dict:
     """
-    Basic health check with app and environment info.
+    Health check with app info, model status, and dependency readiness.
     """
     settings = get_settings()
+    model_registry = ModelRegistry.get_instance()
+    models_loaded = {
+        name: model_registry.get(name) is not None for name in model_registry.models.keys()  # type: ignore[attr-defined]
+    }
+
+    db_connected = False
+    try:
+        supabase = get_supabase_client()
+        probe = supabase.table("invoices").select("id").limit(1).execute()
+        _ = probe.data if hasattr(probe, "data") else []
+        db_connected = True
+    except Exception:
+        db_connected = False
+
     return {
         "status": "ok",
         "app": settings.app_name,
         "environment": settings.app_env,
         "api_version": settings.api_v1_str,
+        "models_loaded": models_loaded,
+        "db_connected": db_connected,
     }
 
 

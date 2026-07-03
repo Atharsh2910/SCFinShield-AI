@@ -14,3 +14,8 @@ export async function getHistory(sessionId) {
   const { data } = await api.get(`/investigation/${sessionId}/history`);
   return data;
 }
+
+export async function endInvestigation(sessionId) {
+  const { data } = await api.delete(`/investigation/${sessionId}`);
+  return data;
+}

@@ -1,34 +1,43 @@
 import { useQuery } from "@tanstack/react-query";
 import { BarChart3 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts";
 
+import ErrorState from "../components/ErrorState";
+import LoadingState from "../components/LoadingState";
+import { useFraudStore } from "../context/FraudContext";
 import { api } from "../services/api";
 
 async function getDashboardData() {
-  const [summary, timeline, alerts] = await Promise.all([
+  const [summary, timeline, alerts, heatmap, topRisks] = await Promise.all([
     api.get("/dashboard/summary"),
     api.get("/dashboard/timeline"),
     api.get("/dashboard/recent-alerts"),
+    api.get("/dashboard/risk-heatmap"),
+    api.get("/dashboard/top-risks"),
   ]);
   return {
     summary: summary.data,
     timeline: timeline.data.timeline || [],
     alerts: alerts.data.alerts || [],
+    heatmap: heatmap.data || {},
+    topRisks: topRisks.data.top_risks || [],
   };
 }
 
 export default function Dashboard() {
+  const { dashboardFilters, setDashboardFilters } = useFraudStore();
   const { data, isLoading, error } = useQuery({
-    queryKey: ["dashboard"],
+    queryKey: ["dashboard", dashboardFilters],
     queryFn: getDashboardData,
   });
 
   if (isLoading) {
-    return <div className="card">Loading dashboard...</div>;
+    return <LoadingState message="Loading dashboard..." />;
   }
 
   if (error) {
-    return <div className="card">Failed to load dashboard: {error.message}</div>;
+    return <ErrorState message={`Failed to load dashboard: ${error.message}`} />;
   }
 
   const summary = data?.summary || {};
@@ -41,6 +50,23 @@ export default function Dashboard() {
           <p className="muted">SCF fraud monitoring overview and recent alerts.</p>
         </div>
         <BarChart3 />
+      </div>
+
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div className="grid grid-3">
+          <select
+            value={dashboardFilters.decision || ""}
+            onChange={(e) => setDashboardFilters({ ...dashboardFilters, decision: e.target.value })}
+          >
+            <option value="">Default summary</option>
+            <option value="HOLD">Focus HOLD</option>
+            <option value="REVIEW">Focus REVIEW</option>
+            <option value="PASS">Focus PASS</option>
+          </select>
+          <button className="button secondary" onClick={() => setDashboardFilters({})}>
+            Reset Dashboard Filters
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-4">
@@ -86,6 +112,7 @@ export default function Dashboard() {
                   <th>Case</th>
                   <th>Decision</th>
                   <th>Severity</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -94,6 +121,65 @@ export default function Dashboard() {
                     <td>{alert.case_number}</td>
                     <td>{alert.decision}</td>
                     <td>{alert.severity}</td>
+                    <td>
+                      <Link className="button secondary" to={`/cases/${alert.id}`}>
+                        Review
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-2" style={{ marginTop: 16 }}>
+        <div className="card">
+          <h3>Risk Heatmap (Tier x Sector)</h3>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Tier</th>
+                  {(data?.heatmap?.sectors || []).map((sector) => (
+                    <th key={sector}>{sector}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {(data?.heatmap?.tiers || []).map((tier, idx) => (
+                  <tr key={tier}>
+                    <td>Tier {tier}</td>
+                    {(data?.heatmap?.matrix?.[idx] || []).map((value, valIdx) => (
+                      <td key={`${tier}-${valIdx}`}>INR {Number(value || 0).toLocaleString()}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="card">
+          <h3>Top Risks</h3>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Invoice</th>
+                  <th>Decision</th>
+                  <th>Score</th>
+                  <th>Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(data?.topRisks || []).map((risk) => (
+                  <tr key={risk.id}>
+                    <td>{risk.invoice_number}</td>
+                    <td>{risk.fraud_decision}</td>
+                    <td>{Number(risk.fraud_score || 0).toFixed(2)}</td>
+                    <td>INR {Number(risk.amount || 0).toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>

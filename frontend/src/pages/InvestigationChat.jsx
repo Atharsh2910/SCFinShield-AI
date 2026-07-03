@@ -3,13 +3,18 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 
 import { getCase } from "../services/fraudService";
-import { askQuestion, getHistory, startInvestigation } from "../services/investigationService";
-import { useFraudStore } from "../context/FraudStore";
+import { askQuestion, endInvestigation, getHistory, startInvestigation } from "../services/investigationService";
+import { useFraudStore } from "../context/FraudContext";
 
 export default function InvestigationChat() {
   const { caseId } = useParams();
   const { investigationSessionId, setInvestigationSessionId } = useFraudStore();
   const [question, setQuestion] = useState("");
+  const quickQuestions = [
+    "Why was this flagged?",
+    "What is the maximum cascade exposure?",
+    "Draft SAR summary for this case.",
+  ];
 
   const { data: fraudCase } = useQuery({
     queryKey: ["case", caseId],
@@ -34,6 +39,11 @@ export default function InvestigationChat() {
       setQuestion("");
       await historyQuery.refetch();
     },
+  });
+
+  const endMutation = useMutation({
+    mutationFn: () => endInvestigation(investigationSessionId),
+    onSuccess: () => setInvestigationSessionId(null),
   });
 
   return (
@@ -61,6 +71,14 @@ export default function InvestigationChat() {
           <button className="button" onClick={() => startMutation.mutate()} disabled={!caseId}>
             {investigationSessionId ? "Session Ready" : "Start Investigation"}
           </button>
+          <button
+            className="button secondary"
+            style={{ marginLeft: 8 }}
+            onClick={() => endMutation.mutate()}
+            disabled={!investigationSessionId}
+          >
+            End Session
+          </button>
         </div>
 
         <div className="card">
@@ -76,6 +94,19 @@ export default function InvestigationChat() {
                   </p>
                 ) : null}
               </div>
+            ))}
+          </div>
+
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+            {quickQuestions.map((item) => (
+              <button
+                key={item}
+                className="button secondary"
+                onClick={() => setQuestion(item)}
+                disabled={!investigationSessionId}
+              >
+                {item}
+              </button>
             ))}
           </div>
 

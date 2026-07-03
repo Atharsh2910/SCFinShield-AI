@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -17,7 +17,15 @@ from backend.services.simulator.synthetic_generator import SCENARIO_TEMPLATES, g
 
 router = APIRouter()
 
-ScenarioName = Literal["phantom_invoice", "duplicate_financing", "carousel_trade", "cascade_amplification"]
+ScenarioName = Literal[
+    "phantom_invoice",
+    "duplicate_financing",
+    "carousel_trade",
+    "cascade_amplification",
+    "velocity_anomaly",
+    "ghost_supplier",
+    "clean",
+]
 
 
 class GenerateRequest(BaseModel):
@@ -87,7 +95,11 @@ async def _persist_invoice_event(db: Client, pinecone_index, invoice_event: Dict
         }
     ).execute()
 
-    upsert_invoice_embedding(invoice_id, invoice_event, pinecone_index)
+    if pinecone_index is not None:
+        try:
+            upsert_invoice_embedding(invoice_id, invoice_event, pinecone_index)
+        except Exception:
+            pass
     return invoice_id
 
 
@@ -101,7 +113,10 @@ async def generate(
     if not body.persist:
         return {"invoices": invoices, "scenario": body.scenario, "count": len(invoices)}
 
-    pinecone_index = get_pinecone_index()
+    try:
+        pinecone_index = get_pinecone_index()
+    except Exception:
+        pinecone_index = None
     invoice_ids: List[str] = []
     for ev in invoices:
         invoice_ids.append(await _persist_invoice_event(db, pinecone_index, ev))

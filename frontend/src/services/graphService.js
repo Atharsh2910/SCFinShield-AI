@@ -14,3 +14,8 @@ export async function traceCascade(invoiceId) {
   const { data } = await api.get(`/graph/cascade/${invoiceId}`);
   return data;
 }
+
+export async function getConcentrationRisk(lenderId) {
+  const { data } = await api.get(`/graph/concentration/${lenderId}`);
+  return data;
+}

@@ -5,6 +5,7 @@ class GraphNode(BaseModel):
     id: str
     label: str
     type: str
+    tier: int | None = None
     risk_score: float
     is_flagged: bool
 

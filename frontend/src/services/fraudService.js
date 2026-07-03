@@ -5,8 +5,8 @@ export async function analyzeFraud(invoiceId) {
   return data;
 }
 
-export async function listCases() {
-  const { data } = await api.get("/fraud/cases");
+export async function listCases(filters = {}) {
+  const { data } = await api.get("/fraud/cases", { params: filters });
   return data;
 }
 

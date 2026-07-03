@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import time
+from datetime import date
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from supabase import Client
 
 from backend.db.supabase import get_db
@@ -93,9 +94,40 @@ async def analyze_fraud(invoice_id: str, db: Client = Depends(get_db)) -> FraudA
 
 
 @router.get("/fraud/cases")
-async def list_cases(db: Client = Depends(get_db)) -> list[FraudCaseResponse]:
-    result = db.table("fraud_cases").select("*").limit(100).execute()
-    return [FraudCaseResponse(**row) for row in result.data or []]
+async def list_cases(
+    db: Client = Depends(get_db),
+    decision: str | None = Query(default=None),
+    severity: str | None = Query(default=None),
+    lender_id: str | None = Query(default=None),
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+) -> list[FraudCaseResponse]:
+    query = db.table("fraud_cases").select("*")
+    if decision:
+        query = query.eq("decision", decision)
+    if severity:
+        query = query.eq("severity", severity)
+    if date_from:
+        query = query.gte("created_at", date_from.isoformat())
+    if date_to:
+        query = query.lte("created_at", date_to.isoformat())
+
+    result = query.limit(200).execute()
+    rows = result.data or []
+
+    # Optional lender filter via invoice join done in application layer.
+    if lender_id:
+        filtered_rows: list[dict[str, Any]] = []
+        for row in rows:
+            invoice_id = row.get("invoice_id")
+            if not invoice_id:
+                continue
+            inv = db.table("invoices").select("lender_id").eq("id", invoice_id).limit(1).execute()
+            inv_lender_id = inv.data[0].get("lender_id") if inv.data else None
+            if inv_lender_id == lender_id:
+                filtered_rows.append(row)
+        rows = filtered_rows
+    return [FraudCaseResponse(**row) for row in rows]
 
 
 @router.get("/fraud/cases/{case_id}")
@@ -159,4 +191,22 @@ async def reindex_case(case_id: str, db: Client = Depends(get_db)) -> dict[str, 
     }
     vector_count = upsert_fraud_cases_to_pinecone([document])
     return {"case_id": case_id, "vector_count": vector_count}
+
+
+@router.get("/fraud/dashboard/summary")
+async def fraud_dashboard_summary(db: Client = Depends(get_db)) -> dict[str, Any]:
+    """
+    Backward-compatible dashboard summary under /fraud namespace.
+    """
+    invoices = db.table("invoices").select("id,amount,fraud_decision").limit(500).execute()
+    rows = invoices.data or []
+    total = len(rows)
+    flagged = [r for r in rows if r.get("fraud_decision") in ("REVIEW", "HOLD")]
+    flagged_count = len(flagged)
+    return {
+        "total_invoices": total,
+        "flagged_count": flagged_count,
+        "fraud_rate": (flagged_count / total) if total else 0.0,
+        "total_exposure": sum(float(r.get("amount") or 0) for r in flagged),
+    }
 

@@ -102,6 +102,10 @@ textarea {
   margin-top: 0;
 }
 
+.card h5 {
+  margin: 0 0 8px;
+}
+
 .muted {
   color: #94a3b8;
 }
@@ -200,6 +204,20 @@ td {
   background: #0f172a;
 }
 
+.progress-bar {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: #1f2937;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #22c55e, #3b82f6);
+  transition: width 0.2s ease;
+}
+
 .split {
   display: grid;
   grid-template-columns: 360px 1fr;
@@ -217,6 +235,45 @@ td {
   border-radius: 12px;
   background: #0f172a;
   border: 1px solid #1f2937;
+}
+
+.mini-card {
+  padding: 12px;
+  border-radius: 12px;
+}
+
+.state-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.timeline {
+  display: grid;
+  gap: 10px;
+}
+
+.timeline-item {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.timeline-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #f59e0b;
+  margin-top: 4px;
+}
+
+.timeline-content {
+  background: #0f172a;
+  border: 1px solid #1f2937;
+  border-radius: 10px;
+  padding: 10px;
 }
 
 .chart-box {

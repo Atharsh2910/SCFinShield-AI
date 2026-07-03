@@ -15,8 +15,8 @@ export async function analyzeInvoice(id) {
   return data;
 }
 
-export async function listInvoices() {
-  const { data } = await api.get("/invoices/");
+export async function listInvoices(filters = {}) {
+  const { data } = await api.get("/invoices/", { params: filters });
   return data;
 }
 

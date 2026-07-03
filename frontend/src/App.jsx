@@ -1,17 +1,31 @@
-import { NavLink, Route, Routes } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 
-import Dashboard from "./pages/Dashboard";
-import FraudCases from "./pages/FraudCases";
-import GraphExplorer from "./pages/GraphExplorer";
-import InvestigationChat from "./pages/InvestigationChat";
-import InvoiceUpload from "./pages/InvoiceUpload";
-import Simulator from "./pages/Simulator";
+import { useAuth } from "./context/AuthContext";
+import AppRoutes from "./routes/AppRoutes";
 
 function AppLayout() {
+  const { user, isAuthenticated, loginDemo, logout } = useAuth();
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
         <h1>SCFinShield-AI</h1>
+        <div className="card mini-card" style={{ marginBottom: 12 }}>
+          {isAuthenticated ? (
+            <>
+              <p className="muted" style={{ marginBottom: 8 }}>
+                Signed in as <strong>{user?.name}</strong>
+              </p>
+              <button className="button secondary" onClick={logout}>
+                Logout
+              </button>
+            </>
+          ) : (
+            <button className="button" onClick={loginDemo}>
+              Login Demo User
+            </button>
+          )}
+        </div>
         <nav>
           <NavLink to="/">Dashboard</NavLink>
           <NavLink to="/upload">Invoice Upload</NavLink>
@@ -22,14 +36,7 @@ function AppLayout() {
       </aside>
 
       <main className="content">
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/upload" element={<InvoiceUpload />} />
-          <Route path="/cases" element={<FraudCases />} />
-          <Route path="/graph" element={<GraphExplorer />} />
-          <Route path="/investigate/:caseId" element={<InvestigationChat />} />
-          <Route path="/simulator" element={<Simulator />} />
-        </Routes>
+        <AppRoutes />
       </main>
     </div>
   );
