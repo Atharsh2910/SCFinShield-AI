@@ -1,20 +1,6 @@
 # ============================================================
-# SCFinShield-AI | Notebook 05: GraphSAGE + GAT GNN
+# SCFinShield-AI | GraphSAGE + GAT GNN
 # ============================================================
-# Dataset  : Elliptic Bitcoin Dataset (PyG built-in)
-#            Fallback: AMLSim synthetic graph or custom SCF graph
-# Purpose  : Node-level fraud classification in financial network.
-#            Learn entity embeddings — fraudulent entities have
-#            anomalous neighbourhood structure regardless of features.
-# Outputs  : graphsage/graphsage_model.pt
-#            graphsage/node_embeddings.pt
-#            gat/gat_model.pt
-#            graphsage/metadata.json
-# ============================================================
-
-# ── KAGGLE INSTALL BLOCK ──────────────────────────────────
-# !pip install torch-geometric torch-scatter torch-sparse -q
-
 import os, json, datetime, warnings
 import numpy as np
 import matplotlib.pyplot as plt

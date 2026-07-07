@@ -1,13 +1,6 @@
 # ============================================================
-# SCFinShield-AI | Notebook 03: Isolation Forest
+# SCFinShield-AI | Isolation Forest
 # ============================================================
-# Inputs   : training/X_train_pca.npy, X_val_pca.npy,
-#            training/X_test_pca.npy
-#            training/y_train_bal.npy, y_val.npy, y_test.npy
-# Outputs  : anomaly/isolation_forest.pkl
-#            anomaly/metadata.json
-# ============================================================
-
 import os, json, pickle, datetime, warnings
 import numpy as np
 import matplotlib.pyplot as plt

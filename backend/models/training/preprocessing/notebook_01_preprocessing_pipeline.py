@@ -1,21 +1,6 @@
 # ============================================================
-# SCFinShield-AI | Notebook 01: Preprocessing Pipeline
+# SCFinShield-AI | Preprocessing Pipeline
 # ============================================================
-# Dataset  : DataCo Smart Supply Chain (Kaggle/Mendeley)
-#            https://www.kaggle.com/datasets/shashwatwork/dataco-smart-supply-chain-for-big-data-analysis
-# Outputs  : preprocessing/scaler.pkl
-#            preprocessing/pca.pkl
-#            preprocessing/label_encoders.pkl
-#            preprocessing/feature_columns.pkl
-#            training/X_train.npy, X_val.npy, X_test.npy
-#            training/y_train.npy, y_val.npy, y_test.npy
-#            training/X_train_pca.npy (post-SMOTE + PCA)
-#            training/y_train_bal.npy (post-SMOTE)
-# ============================================================
-
-# ── KAGGLE INSTALL BLOCK ──────────────────────────────────
-# !pip install imbalanced-learn -q
-
 import os
 import pickle
 import warnings
@@ -315,7 +300,6 @@ smote = BorderlineSMOTE(
     k_neighbors=5,
     kind="borderline-1",       # Danger samples near boundary
     random_state=42,
-    n_jobs=-1
 )
 
 X_train_bal, y_train_bal = smote.fit_resample(X_train, y_train)

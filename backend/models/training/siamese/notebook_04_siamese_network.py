@@ -1,18 +1,6 @@
 # ============================================================
-# SCFinShield-AI | Notebook 04: Siamese Network
+# SCFinShield-AI | Siamese Network
 # ============================================================
-# Purpose  : Near-duplicate invoice detection.
-#            Given two invoice feature vectors, output a
-#            similarity score 0-1. Score > threshold → duplicate.
-# Inputs   : training/X_train_pca.npy, X_val_pca.npy, X_test_pca.npy
-#            training/y_train_bal.npy, y_val.npy, y_test.npy
-# Outputs  : siamese/siamese_network.pt
-#            siamese/metadata.json
-# ============================================================
-
-# ── KAGGLE INSTALL ────────────────────────────────────────
-# No extra installs needed (torch + sklearn available on Kaggle)
-
 import os, json, pickle, datetime, warnings
 import numpy as np
 import matplotlib.pyplot as plt

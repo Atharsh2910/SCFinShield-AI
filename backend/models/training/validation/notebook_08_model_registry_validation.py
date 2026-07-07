@@ -1,21 +1,6 @@
 # ============================================================
-# SCFinShield-AI | Notebook 08: Model Registry Validation
+# SCFinShield-AI | Model Registry Validation
 # ============================================================
-# Purpose  : Load every saved model artifact, run end-to-end
-#            inference on a batch of test invoices exactly as the
-#            FastAPI backend will at runtime.
-#            Verify all pkl/pt files load correctly.
-#            Validate inference latency is acceptable for API use.
-#            Generate the final model card for documentation.
-#
-# Run this LAST — after all previous notebooks complete.
-# All outputs should already exist in:
-#   preprocessing/, dnn/, anomaly/, siamese/,
-#   graphsage/, gat/, transformer/, ensemble/
-#
-# This notebook has NO new training — purely validation + export.
-# ============================================================
-
 import os, json, pickle, datetime, warnings, time
 import numpy as np
 import matplotlib.pyplot as plt

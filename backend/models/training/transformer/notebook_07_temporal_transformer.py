@@ -1,29 +1,6 @@
 # ============================================================
-# SCFinShield-AI | Notebook 07: Temporal Transformer
+# SCFinShield-AI | Temporal Transformer
 # ============================================================
-# Purpose  : Detect sequencing anomalies in invoice streams.
-#            Each supplier has a historical sequence of invoices.
-#            The Transformer learns the "language" of legitimate
-#            invoice sequences. Anomalous sequences (end-of-month
-#            spikes, non-sequential invoice numbers, uncharacteristic
-#            billing cycles, velocity bursts) produce high
-#            reconstruction loss → anomaly score.
-#
-# Architecture : BERT-style masked invoice sequence model
-#                (Masked Invoice Modelling = MIM)
-#                + supervised classification head fine-tuned
-#                  on labelled sequences
-#
-# Inputs   : training/X_train_pca.npy, X_val_pca.npy, X_test_pca.npy
-#            training/y_train_bal.npy, y_val.npy, y_test.npy
-#            preprocessing/metadata.json
-# Outputs  : transformer/temporal_transformer.pt
-#            transformer/metadata.json
-# ============================================================
-
-# ── KAGGLE INSTALL ────────────────────────────────────────
-# torch and sklearn already available on Kaggle — no extra install
-
 import os, json, pickle, datetime, warnings, math
 import numpy as np
 import matplotlib.pyplot as plt
