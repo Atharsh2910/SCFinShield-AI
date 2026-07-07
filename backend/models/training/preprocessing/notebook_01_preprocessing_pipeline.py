@@ -36,7 +36,7 @@ print("=" * 60)
 print("\n[1/8] Loading DataCo Smart Supply Chain dataset...")
 
 # Kaggle path — adjust if filename differs
-CSV_PATH = "/kaggle/input/dataco-smart-supply-chain-for-big-data-analysis/DataCoSupplyChainDataset.csv"
+CSV_PATH = "/kaggle/input/datasets/shashwatwork/dataco-smart-supply-chain-for-big-data-analysis/DataCoSupplyChainDataset.csv"
 
 df = pd.read_csv(CSV_PATH, encoding="latin-1")
 print(f"  Raw shape: {df.shape}")

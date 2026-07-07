@@ -1,6 +1,8 @@
 # ============================================================
 # SCFinShield-AI | DNN Classifier + Bayesian Opt
 # ============================================================
+!pip install optuna -q
+
 import os, json, pickle, datetime, warnings
 import numpy as np
 import matplotlib.pyplot as plt
