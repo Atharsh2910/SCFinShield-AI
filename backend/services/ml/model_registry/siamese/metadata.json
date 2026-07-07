@@ -1,0 +1,18 @@
+{
+  "created_at": "2026-07-07T08:49:10.577156",
+  "model_type": "SiameseNetwork",
+  "input_dim": 15,
+  "embed_dim": 128,
+  "optimal_threshold": 0.11,
+  "test_auc_roc": 0.9502310233511267,
+  "test_auc_pr": 0.9311895014241109,
+  "test_f1": 0.9275660830758669,
+  "test_recall": 0.9913413560316995,
+  "val_auc_roc": 0.9492886899625853,
+  "loss_function": "ContrastiveLoss (BCE + Euclidean contrastive)",
+  "pair_noise_std": 0.03,
+  "batch_size": 512,
+  "epochs_trained": 16,
+  "optimizer": "AdamW",
+  "lr": 0.0003
+}

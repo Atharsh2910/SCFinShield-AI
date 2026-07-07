@@ -1,0 +1,38 @@
+{
+  "created_at": "2026-07-07T08:34:15.915432",
+  "model_type": "FraudClassifier (FCN)",
+  "input_dim": 15,
+  "layer_dims": [
+    512,
+    512
+  ],
+  "dropout_rates": [
+    0.30000000000000004,
+    0.1
+  ],
+  "activation": "GELU",
+  "loss_function": "FocalLoss",
+  "focal_alpha": 0.6,
+  "focal_gamma": 1.5,
+  "optimal_threshold": 0.5600000000000002,
+  "optuna_best_val_f1": 0.15575679172056922,
+  "n_trials": 50,
+  "final_epochs": 100,
+  "test_auc_roc": 0.8658188675775937,
+  "test_auc_pr": 0.07956832290049634,
+  "test_f1": 0.1423764830883655,
+  "test_recall": 0.6600985221674877,
+  "test_precision": 0.07979356887653831,
+  "best_params": {
+    "n_layers": 2,
+    "dim_l0": 512,
+    "dim_l1": 512,
+    "dropout_l0": 0.30000000000000004,
+    "dropout_l1": 0.1,
+    "lr": 0.004462848588181826,
+    "batch_size": 512,
+    "weight_decay": 1.6301041761725922e-05,
+    "focal_alpha": 0.6,
+    "focal_gamma": 1.5
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "created_at": "2026-07-07T09:26:31.301985",
+  "model_type": "GraphSAGE + GAT",
+  "dataset": "Synthetic SCF",
+  "input_dim": 64,
+  "graphsage": {
+    "hidden_dim": 128,
+    "output_dim": 64,
+    "n_layers": 3,
+    "dropout": 0.4,
+    "optimal_threshold": 0.6900000000000002,
+    "test_auc_roc": 0.9997263157894737,
+    "test_auc_pr": 0.9941817766365735,
+    "test_f1": 0.98,
+    "test_recall": 0.98
+  },
+  "gat": {
+    "hidden_dim": 64,
+    "output_dim": 32,
+    "heads": 4,
+    "dropout": 0.4,
+    "optimal_threshold": 0.7500000000000002,
+    "test_auc_roc": 0.909978947368421,
+    "test_auc_pr": 0.28888405556614805,
+    "test_f1": 0.3291139240506329,
+    "test_recall": 0.78
+  }
+}
