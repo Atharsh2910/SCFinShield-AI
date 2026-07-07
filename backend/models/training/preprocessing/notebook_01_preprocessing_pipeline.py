@@ -1,6 +1,8 @@
 # ============================================================
 # SCFinShield-AI | Preprocessing Pipeline
 # ============================================================
+!pip install imbalanced-learn -q
+
 import os
 import pickle
 import warnings
@@ -149,62 +151,86 @@ if "quantity" in df_feat.columns and "unit_price" in df_feat.columns:
         1.0
     ).clip(0, 5)
 
-# Simulate SCFinShield-specific signals (will be real at inference time)
+# ==========================================================
+# SCFinShield-inspired engineered features (NO TARGET LEAKAGE)
+# ==========================================================
+
 np.random.seed(42)
-n = len(df_feat)
-df_feat["duplicate_risk_score"]   = np.where(
-    df_feat[TARGET_COL] == 1,
-    np.random.beta(5, 2, n),
-    np.random.beta(1, 5, n)
+
+# Shipment delay
+df_feat["duplicate_risk_score"] = (
+    df_feat.get("shipment_delay", 0).abs() /
+    (df_feat.get("shipment_delay", 0).abs().max() + 1e-6)
+).clip(0, 1)
+
+# Matching score
+if "amount_vs_computed" in df_feat.columns:
+    df_feat["match_score"] = (
+        1 - np.abs(df_feat["amount_vs_computed"] - 1)
+    ).clip(0, 1)
+else:
+    df_feat["match_score"] = 0.5
+
+# Number of anomalies
+df_feat["anomaly_count"] = (
+    (df_feat.get("shipment_delay", 0) > 2).astype(int)
+    + (df_feat.get("high_discount", 0)).astype(int)
+    + (df_feat.get("amount_bin_below_threshold", 0)).astype(int)
 )
-df_feat["match_score"]            = np.where(
-    df_feat[TARGET_COL] == 1,
-    np.random.beta(2, 5, n),
-    np.random.beta(5, 2, n)
+
+# Carousel indicator
+df_feat["has_carousel"] = (
+    df_feat["anomaly_count"] >= 2
+).astype(int)
+
+# Cascade depth
+df_feat["cascade_depth"] = np.minimum(
+    df_feat["anomaly_count"],
+    3
 )
-df_feat["anomaly_count"]          = np.where(
-    df_feat[TARGET_COL] == 1,
-    np.random.randint(1, 5, n),
-    np.random.randint(0, 2, n)
+
+# Cascade exposure
+df_feat["cascade_exposure"] = (
+    df_feat.get("amount", 0)
+    * (1 + df_feat["cascade_depth"])
 )
-df_feat["has_carousel"]           = np.where(
-    df_feat[TARGET_COL] == 1,
-    np.random.binomial(1, 0.25, n),
-    np.random.binomial(1, 0.01, n)
+
+# Supplier age proxy
+df_feat["supplier_age_days"] = np.random.randint(
+    90,
+    3650,
+    len(df_feat)
 )
-df_feat["cascade_depth"]          = np.where(
-    df_feat[TARGET_COL] == 1,
-    np.random.randint(0, 4, n),
-    np.random.randint(0, 1, n)
+
+# Supplier invoice count
+df_feat["supplier_invoice_count"] = (
+    df_feat.get("quantity", 1)
+    * np.random.randint(5, 15, len(df_feat))
 )
-df_feat["cascade_exposure"]       = df_feat["cascade_depth"] * df_feat.get("amount", 10000)
-df_feat["supplier_age_days"]      = np.where(
-    df_feat[TARGET_COL] == 1,
-    np.random.randint(1, 90, n),
-    np.random.randint(90, 3650, n)
+
+# Invoice frequencies
+df_feat["invoices_last_7d"] = np.random.poisson(3, len(df_feat))
+
+df_feat["invoices_last_30d"] = (
+    df_feat["invoices_last_7d"] * 4
+    + np.random.randint(0, 6, len(df_feat))
 )
-df_feat["supplier_invoice_count"] = np.where(
-    df_feat[TARGET_COL] == 1,
-    np.random.randint(1, 20, n),
-    np.random.randint(5, 500, n)
+
+# Supplier fraud rate proxy
+df_feat["supplier_fraud_rate"] = (
+    df_feat["high_discount"] * 0.3
+    + df_feat["duplicate_risk_score"] * 0.4
+    + (1 - df_feat["match_score"]) * 0.3
+).clip(0, 1)
+
+# PO/GRN matching
+df_feat["po_match_score"] = (
+    df_feat["match_score"] * np.random.uniform(0.90, 1.00, len(df_feat))
 )
-df_feat["invoices_last_7d"]       = np.where(
-    df_feat[TARGET_COL] == 1,
-    np.random.randint(2, 15, n),
-    np.random.randint(0, 5, n)
+
+df_feat["grn_match_score"] = (
+    df_feat["match_score"] * np.random.uniform(0.85, 1.00, len(df_feat))
 )
-df_feat["invoices_last_30d"]      = np.where(
-    df_feat[TARGET_COL] == 1,
-    np.random.randint(5, 50, n),
-    np.random.randint(1, 20, n)
-)
-df_feat["supplier_fraud_rate"]    = np.where(
-    df_feat[TARGET_COL] == 1,
-    np.random.beta(3, 2, n),
-    np.random.beta(1, 10, n)
-)
-df_feat["po_match_score"]         = df_feat["match_score"] * np.random.uniform(0.8, 1.0, n)
-df_feat["grn_match_score"]        = df_feat["match_score"] * np.random.uniform(0.7, 1.0, n)
 
 # ── 3d. Categorical features ─────────────────────────────────
 CAT_COLS_RAW = [
