@@ -1,22 +1,8 @@
 # ============================================================
-# SCFinShield-AI | Notebook 06: XGBoost Ensemble Scorer + SHAP
-# ============================================================
-# Purpose  : Meta-learner that combines outputs from ALL upstream
-#            models (DNN, Isolation Forest, Siamese, Graph signals)
-#            into a single calibrated fraud probability.
-#            SHAP provides per-prediction feature attribution.
-# Inputs   : training/X_train_pca.npy, X_val_pca.npy, X_test_pca.npy
-#            training/y_train_bal.npy, y_val.npy, y_test.npy
-#            dnn/fraud_classifier.pt + dnn/metadata.json
-#            anomaly/isolation_forest.pkl + anomaly/metadata.json
-#            siamese/siamese_network.pt
-# Outputs  : ensemble/xgboost_ensemble.pkl
-#            ensemble/shap_explainer.pkl
-#            ensemble/metadata.json
+# SCFinShield-AI | XGBoost Ensemble Scorer + SHAP
 # ============================================================
 
-# ── KAGGLE INSTALL BLOCK ──────────────────────────────────
-# !pip install xgboost shap optuna -q
+!pip install xgboost shap optuna -q
 
 import os, json, pickle, datetime, warnings
 import numpy as np
@@ -283,12 +269,12 @@ def xgb_objective(trial):
         random_state=42,
         n_jobs=-1,
         verbosity=0,
+        early_stopping_rounds=20
     )
 
     model.fit(
         M_train, y_train,
         eval_set=[(M_val, y_val)],
-        early_stopping_rounds=20,
         verbose=False,
     )
 
@@ -333,6 +319,7 @@ xgb_final = xgb.XGBClassifier(
     random_state     = 42,
     n_jobs           = -1,
     verbosity        = 0,
+    early_stopping_rounds=30
 )
 
 # Combine train + val for final training (with early stopping on full test)
@@ -342,11 +329,10 @@ y_trainval  = np.concatenate([y_train, y_val])
 xgb_final.fit(
     M_trainval, y_trainval,
     eval_set         = [(M_test, y_test)],
-    early_stopping_rounds = 30,
     verbose          = False,
 )
 
-print(f"  Best iteration: {xgb_final.best_iteration}")
+print(f"  Best iteration: {xgb_final}")
 
 
 # ─────────────────────────────────────────────────────────────
