@@ -195,10 +195,8 @@ class SiameseNetwork(nn.Module):
         e1 = self.encoder(x1)
         e2 = self.encoder(x2)
         cos_sim  = nn.functional.cosine_similarity(e1, e2, dim=1, eps=1e-8).unsqueeze(1)
-        abs_diff = torch.abs(e1 - e2)  # shape: (B, embed_dim)
-        # Pool absolute difference to a single statistic
-        diff_mean = abs_diff.mean(dim=1, keepdim=True)  # (B, 1)
-        combined  = torch.cat([cos_sim, diff_mean], dim=1)
+        abs_diff = torch.abs(e1 - e2) 
+        combined = torch.cat([cos_sim, abs_diff], dim=1)
         return self.sim_head(combined).squeeze(-1)
 
     def encode(self, x: torch.Tensor) -> torch.Tensor:
