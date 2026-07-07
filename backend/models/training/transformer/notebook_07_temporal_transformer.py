@@ -54,17 +54,8 @@ print(f"  Test : {X_test.shape}   fraud={y_test.mean():.4f}")
 # ─────────────────────────────────────────────────────────────
 print("\n[2/8] Constructing invoice sequences per supplier...")
 
-# Strategy: group consecutive invoices into fixed-length windows.
-# Each "sequence" = SEQ_LEN consecutive invoices treated as coming
-# from the same supplier entity. The label of the sequence is the
-# label of the last invoice in the window (the one being evaluated).
-#
-# In production: sequences are built from actual supplier invoice
-# history stored in Supabase / Neo4j. Here we simulate sequences
-# by creating sliding windows over the sorted dataset.
-
-SEQ_LEN  = 8    # number of invoices in each context window
-STRIDE   = 1    # sliding window stride
+SEQ_LEN  = 8  
+STRIDE   = 1 
 
 def build_sequences(X, y, seq_len=SEQ_LEN, stride=STRIDE):
     """

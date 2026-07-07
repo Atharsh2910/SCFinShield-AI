@@ -1,5 +1,5 @@
 # ============================================================
-# SCFinShield-AI | Model Registry Validation
+# SCFinShield-AI | Notebook 08: Model Registry Validation
 # ============================================================
 import os, json, pickle, datetime, warnings, time
 import numpy as np
