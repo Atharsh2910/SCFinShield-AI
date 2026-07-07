@@ -287,14 +287,17 @@ print(f"\n  Best val F1   : {study.best_value:.4f}")
 print(f"  Best params   : {best_params}")
 
 # Visualise optimisation history
-fig, axes = plt.subplots(1, 2, figsize=(12, 4))
-optuna.visualization.matplotlib.plot_optimization_history(study, ax=axes[0])
-optuna.visualization.matplotlib.plot_param_importances(study, ax=axes[1])
+# Optimization history
+optuna.visualization.matplotlib.plot_optimization_history(study)
 plt.tight_layout()
 plt.savefig("plots/optuna_history.png", dpi=150)
 plt.close()
-print("  Saved: plots/optuna_history.png")
 
+# Parameter importance
+optuna.visualization.matplotlib.plot_param_importances(study)
+plt.tight_layout()
+plt.savefig("plots/optuna_param_importance.png", dpi=150)
+plt.close()
 
 # ─────────────────────────────────────────────────────────────
 # SECTION 5 — FINAL MODEL TRAINING WITH BEST PARAMS
