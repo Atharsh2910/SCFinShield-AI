@@ -1,6 +1,8 @@
 # ============================================================
-# SCFinShield-AI | GraphSAGE + GAT GNN
+# SCFinShield-AI | Notebook 05: GraphSAGE + GAT GNN
 # ============================================================
+!pip install torch-geometric torch-scatter torch-sparse -q
+
 import os, json, datetime, warnings
 import numpy as np
 import matplotlib.pyplot as plt
@@ -362,7 +364,7 @@ def train_model(model, model_name, epochs=150, lr=5e-4, weight_decay=5e-5, patie
     """Full training loop with early stopping and LR scheduling."""
     opt = optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
     sched = optim.lr_scheduler.ReduceLROnPlateau(
-        opt, mode="max", patience=10, factor=0.5, verbose=False
+        opt, mode="max", patience=10, factor=0.5
     )
 
     best_auc   = 0.0
