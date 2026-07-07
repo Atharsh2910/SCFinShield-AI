@@ -1,3 +1,14 @@
+# ============================================================
+# SCFinShield-AI | Notebook 02: DNN Classifier + Bayesian Opt
+# ============================================================
+# Inputs   : training/X_train_pca.npy, X_val_pca.npy,
+#            training/X_test_pca.npy
+#            training/y_train_bal.npy, y_val.npy, y_test.npy
+#            preprocessing/metadata.json
+# Outputs  : dnn/fraud_classifier.pt
+#            dnn/metadata.json
+# ============================================================
+
 # ── KAGGLE INSTALL BLOCK ──────────────────────────────────
 # !pip install optuna -q
 

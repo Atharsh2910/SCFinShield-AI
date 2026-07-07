@@ -16,6 +16,8 @@ After training, copy the output `.pkl` / `.pt` files into
 | `notebook_04_siamese_network.py` | `siamese/` | `model_registry/siamese/siamese_network.pt` |
 | `notebook_05_graphsage_gnn.py` | `graphsage/` | `model_registry/graphsage/graphsage_model.pt` |
 | `notebook_06_xgboost_ensemble.py` | `ensemble/` | `model_registry/ensemble/xgboost_ensemble.pkl`, `shap_explainer.pkl` |
+| `notebook_07_temporal_transformer.py` | `transformer/` | `model_registry/transformer/temporal_transformer.pt` |
+| `notebook_08_model_registry_validation.py` | `validation/` | `model_registry/model_card.json` |
 
 ---
 
@@ -50,6 +52,14 @@ Run notebooks in this exact order to avoid dependency issues:
    - Includes SHAP explainability
    - Outputs: `xgboost_ensemble.pkl`, `shap_explainer.pkl`
 
+7. **Notebook 07 — Temporal Transformer** (`transformer/`)
+   - Sequential attention-based transaction patterns modeling
+   - Outputs: `temporal_transformer.pt`
+
+8. **Notebook 08 — Model Registry Validation** (`validation/`)
+   - End-to-end inference verification on test set
+   - Outputs: `model_card.json`
+
 ---
 
 ## After Training
@@ -69,9 +79,12 @@ backend/services/ml/model_registry/
 │   └── isolation_forest.pkl
 ├── siamese/
 │   └── siamese_network.pt
+├── transformer/
+│   └── temporal_transformer.pt
 ├── graphsage/
 │   └── graphsage_model.pt        
-└── ensemble/
-    ├── xgboost_ensemble.pkl
-    └── shap_explainer.pkl
+├── ensemble/
+│   ├── xgboost_ensemble.pkl
+│   └── shap_explainer.pkl
+└── model_card.json
 ```
