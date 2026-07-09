@@ -15,8 +15,6 @@ SCFinShield-AI is an advanced fraud detection and management platform designed f
 - **Knowledge Base**: RAG-enabled system for storing and retrieving fraud-related information
 - **Dashboard**: Real-time visualization of fraud risks and transaction status
 - **Document Processing**: PDF extraction and analysis capabilities
-- **Data Simulation**: Testing environment for fraud scenario simulation
-- **Entity Management**: Tracking of suppliers, buyers, and transaction entities
 
 ## Technology Stack
 
@@ -263,20 +261,3 @@ The system uses three primary databases:
 3. **Pinecone**: Stores vector embeddings for similarity searches
 
 Ensure all three services are accessible and properly configured before starting the application.
-
-## Contributing
-
-When contributing to this project:
-
-1. Create a feature branch from main
-2. Make your changes and test thoroughly
-3. Ensure all dependencies are correctly specified
-4. Submit a pull request with a clear description of changes
-
-## Support and Documentation
-
-For issues, questions, or contributions, please refer to the project repository or contact the development team.
-
-## License
-
-This project is provided as-is for supply chain finance fraud detection purposes.
