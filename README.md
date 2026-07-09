@@ -4,7 +4,7 @@ Multi-Tier Supply Chain Finance Fraud Detection and Management System
 
 ## Overview
 
-SCFinShield-AI is an advanced fraud detection and management platform designed for supply chain finance operations. The system uses machine learning, graph analysis, and AI-powered investigation tools to identify, analyze, and manage fraudulent activities in multi-tier supply chain transactions. It provides real-time risk assessment, automated investigation support, and comprehensive reporting capabilities to protect organizations from financial fraud.
+SCFinShield-AI is an advanced fraud detection and management platform designed for supply chain finance operations. The system uses machine learning, graph analysis, and AI-powered investigation tools to identify, analyze, and manage fraudulent activities in supply chain finance transactions.
 
 ## Key Features
 
@@ -31,37 +31,160 @@ SCFinShield-AI is an advanced fraud detection and management platform designed f
 ## Project Structure
 
 ```
-backend/
-  api/              API endpoints (fraud, invoices, graph, investigation, dashboard, etc.)
-  core/             Configuration, logging, security settings
-  db/               Database connections (Neo4j, Supabase)
-  models/           SQLAlchemy ORM models
-  schemas/          Pydantic request/response schemas
-  services/
-    ml/             Machine learning model loading and inference
-    entities/       Entity extraction and management
-    fingerprinting/ Document fingerprinting for duplicate detection
-    graph/          Supply chain graph analysis
-    ingestion/      Data ingestion and processing
-    langgraph/      AI investigation workflows
-    rag/            Retrieval-augmented generation system
-    reporting/      Report generation
-    simulator/      Fraud scenario simulation
-    verification/   Transaction verification logic
-  utils/            Helper functions and utilities
-
-frontend/
-  src/
-    components/     Reusable React components
-    pages/          Application pages
-    routes/         Route definitions
-    services/       API client and utilities
-    context/        React context for state management
-  package.json      Node.js dependencies and scripts
-  vite.config.js    Vite build configuration
-
-docker/             Docker configuration files
-scripts/            Development and deployment scripts
+SCFinShield-AI/
+├── backend/
+│   ├── api/
+│   │   ├── fraud.py
+│   │   ├── invoices.py
+│   │   ├── graph.py
+│   │   ├── investigation.py
+│   │   ├── dashboard.py
+│   │   ├── simulator.py
+│   │   ├── knowledge_base.py
+│   │   └── health.py
+│   ├── core/
+│   │   ├── config.py
+│   │   ├── logging.py
+│   │   └── security.py
+│   ├── db/
+│   │   ├── supabase_client.py
+│   │   ├── neo4j_client.py
+│   │   └── pinecone_client.py
+│   ├── models/
+│   │   ├── invoice.py
+│   │   ├── transaction.py
+│   │   ├── user.py
+│   │   ├── audit_log.py
+│   │   └── entity.py
+│   ├── schemas/
+│   │   ├── invoice.py
+│   │   ├── fraud.py
+│   │   ├── transaction.py
+│   │   ├── investigation.py
+│   │   └── dashboard.py
+│   ├── services/
+│   │   ├── ml/
+│   │   │   ├── model_loader.py
+│   │   │   ├── inference.py
+│   │   │   └── feature_engineering.py
+│   │   ├── entities/
+│   │   │   ├── extractor.py
+│   │   │   └── manager.py
+│   │   ├── fingerprinting/
+│   │   │   ├── document_fingerprint.py
+│   │   │   └── duplicate_detection.py
+│   │   ├── graph/
+│   │   │   ├── graph_builder.py
+│   │   │   ├── relationship_analyzer.py
+│   │   │   └── network_analysis.py
+│   │   ├── ingestion/
+│   │   │   ├── data_processor.py
+│   │   │   ├── validators.py
+│   │   │   └── batch_processor.py
+│   │   ├── langgraph/
+│   │   │   ├── investigation_workflow.py
+│   │   │   ├── agents.py
+│   │   │   └── tools.py
+│   │   ├── rag/
+│   │   │   ├── retriever.py
+│   │   │   ├── document_loader.py
+│   │   │   └── vector_store.py
+│   │   ├── reporting/
+│   │   │   ├── report_generator.py
+│   │   │   └── formatters.py
+│   │   ├── simulator/
+│   │   │   ├── fraud_scenarios.py
+│   │   │   └── scenario_runner.py
+│   │   └── verification/
+│   │       ├── transaction_verifier.py
+│   │       └── compliance_checker.py
+│   ├── utils/
+│   │   ├── helpers.py
+│   │   ├── validators.py
+│   │   ├── parsers.py
+│   │   └── decorators.py
+│   ├── main.py
+│   └── requirements.txt
+│
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── common/
+│   │   │   │   ├── Header.jsx
+│   │   │   │   ├── Sidebar.jsx
+│   │   │   │   ├── Footer.jsx
+│   │   │   │   └── Navigation.jsx
+│   │   │   ├── fraud/
+│   │   │   │   ├── FraudDetector.jsx
+│   │   │   │   ├── RiskScore.jsx
+│   │   │   │   └── AlertList.jsx
+│   │   │   ├── invoices/
+│   │   │   │   ├── InvoiceForm.jsx
+│   │   │   │   ├── InvoiceList.jsx
+│   │   │   │   └── InvoiceDetails.jsx
+│   │   │   ├── graph/
+│   │   │   │   ├── NetworkVisualization.jsx
+│   │   │   │   └── GraphAnalysis.jsx
+│   │   │   ├── investigation/
+│   │   │   │   ├── InvestigationPanel.jsx
+│   │   │   │   └── CaseDetails.jsx
+│   │   │   └── dashboard/
+│   │   │       ├── MetricsCard.jsx
+│   │   │       ├── Charts.jsx
+│   │   │       └── Overview.jsx
+│   │   ├── pages/
+│   │   │   ├── Dashboard.jsx
+│   │   │   ├── FraudDetection.jsx
+│   │   │   ├── Invoices.jsx
+│   │   │   ├── GraphAnalysis.jsx
+│   │   │   ├── Investigation.jsx
+│   │   │   ├── Settings.jsx
+│   │   │   └── NotFound.jsx
+│   │   ├── routes/
+│   │   │   └── Routes.jsx
+│   │   ├── services/
+│   │   │   ├── api.js
+│   │   │   ├── fraudService.js
+│   │   │   ├── invoiceService.js
+│   │   │   ├── graphService.js
+│   │   │   └── investigationService.js
+│   │   ├── context/
+│   │   │   ├── AuthContext.jsx
+│   │   │   ├── FraudContext.jsx
+│   │   │   └── AppContext.jsx
+│   │   ├── styles/
+│   │   │   ├── global.css
+│   │   │   ├── components.css
+│   │   │   └── pages.css
+│   │   ├── utils/
+│   │   │   ├── helpers.js
+│   │   │   ├── formatters.js
+│   │   │   └── validators.js
+│   │   ├── App.jsx
+│   │   └── index.jsx
+│   ├── public/
+│   │   └── assets/
+│   ├── .env.example
+│   ├── package.json
+│   ├── vite.config.js
+│   └── index.html
+│
+├── docker/
+│   ├── Dockerfile.backend
+│   ├── Dockerfile.frontend
+│   └── docker-compose.yml
+│
+├── scripts/
+│   ├── setup.sh
+│   ├── run_backend.sh
+│   ├── run_frontend.sh
+│   ├── deploy.sh
+│   └── migrate_db.sh
+│
+├── .env.example
+├── .gitignore
+├── README.md
+└── LICENSE
 ```
 
 ## Prerequisites
