@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { analyzeFraud } from "../services/fraudService";
 import { generateDataset, listScenarioTemplates, runScenario } from "../services/simulatorService";
+import FraudScoreBadge from "../components/FraudScoreBadge";
 
 export default function Simulator() {
   const [scenario, setScenario] = useState("phantom_invoice");
@@ -64,6 +65,9 @@ export default function Simulator() {
       setLoading(false);
     }
   }
+
+  // Synthetic invoices from scenario output
+  const syntheticInvoices = result?.invoices || [];
 
   return (
     <div>
@@ -154,14 +158,83 @@ export default function Simulator() {
       {result ? (
         <div className="card" style={{ marginTop: 16 }}>
           <h3>Scenario Output</h3>
-          <pre style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(result, null, 2)}</pre>
+          <p className="muted" style={{ marginBottom: 12 }}>
+            Scenario: <strong>{result.scenario || scenario}</strong> &nbsp;·&nbsp;
+            Generated: <strong>{result.count ?? syntheticInvoices.length ?? 0}</strong> invoices
+            {result.persisted ? " · Persisted to backend" : " · Preview only"}
+          </p>
+
+          {syntheticInvoices.length > 0 ? (
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Invoice #</th>
+                    <th>Supplier</th>
+                    <th>Buyer</th>
+                    <th>Amount (INR)</th>
+                    <th>Scenario</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {syntheticInvoices.map((inv, idx) => (
+                    <tr key={inv.invoice_number || idx}>
+                      <td>{inv.invoice_number || `—`}</td>
+                      <td>{inv.supplier_name || inv.supplier_id || "—"}</td>
+                      <td>{inv.buyer_name || inv.buyer_id || "—"}</td>
+                      <td>{Number(inv.amount || 0).toLocaleString()}</td>
+                      <td>{inv.scenario || scenario}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="muted">
+              {result.invoice_ids?.length
+                ? `${result.invoice_ids.length} invoice IDs persisted. Click "Run Analysis" to score them.`
+                : "No invoice details returned. Enable persist and re-generate to see scored invoices."}
+            </p>
+          )}
         </div>
       ) : null}
 
       {analysisResult ? (
         <div className="card" style={{ marginTop: 16 }}>
           <h3>Analysis Results</h3>
-          <pre style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(analysisResult, null, 2)}</pre>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Invoice ID</th>
+                  <th>Decision</th>
+                  <th>Ensemble Score</th>
+                  <th>Fraud Patterns</th>
+                </tr>
+              </thead>
+              <tbody>
+                {analysisResult.map((res, idx) => {
+                  const patterns = Array.isArray(res.fraud_patterns)
+                    ? res.fraud_patterns.join(", ")
+                    : res.fraud_patterns || "—";
+                  const score = res.ensemble_score ?? res.fraud_score ?? 0;
+                  return (
+                    <tr key={res.invoice_id || idx}>
+                      <td>{res.invoice_id || "—"}</td>
+                      <td>
+                        <FraudScoreBadge
+                          decision={res.fraud_decision || res.decision || "PASS"}
+                          score={score}
+                        />
+                      </td>
+                      <td>{(Number(score) * 100).toFixed(1)}%</td>
+                      <td>{patterns}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : null}
     </div>

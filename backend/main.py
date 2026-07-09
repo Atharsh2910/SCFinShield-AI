@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.api import fraud, health, invoice, graph, investigation, dashboard, simulator, knowledge_base
+from backend.api import auth, fraud, health, invoice, graph, investigation, dashboard, simulator, knowledge_base
 from backend.core.config import get_settings
 from backend.core.logger import setup_logger
 from backend.db.neo4j import close_neo4j_driver
@@ -43,6 +43,7 @@ app.add_middleware(
 )
 
 # Register routers
+app.include_router(auth.router, prefix=settings.api_v1_str + "/auth", tags=["auth"])
 app.include_router(health.router, prefix=settings.api_v1_str, tags=["health"])
 app.include_router(invoice.router, prefix=settings.api_v1_str, tags=["invoices"])
 app.include_router(fraud.router, prefix=settings.api_v1_str, tags=["fraud"])

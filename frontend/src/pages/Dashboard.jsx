@@ -1,7 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { BarChart3 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts";
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+} from "recharts";
 
 import ErrorState from "../components/ErrorState";
 import LoadingState from "../components/LoadingState";
@@ -71,19 +79,19 @@ export default function Dashboard() {
 
       <div className="grid grid-4">
         <div className="card">
-          <div className="muted">Total Invoices</div>
+          <div className="muted">📄 Total Invoices</div>
           <div className="kpi-value">{summary.total_invoices ?? 0}</div>
         </div>
         <div className="card">
-          <div className="muted">Flagged Invoices</div>
+          <div className="muted">🚨 Flagged Invoices</div>
           <div className="kpi-value">{summary.flagged_count ?? 0}</div>
         </div>
         <div className="card">
-          <div className="muted">Total Exposure</div>
+          <div className="muted">💰 Total Exposure</div>
           <div className="kpi-value">INR {(summary.total_exposure ?? 0).toLocaleString()}</div>
         </div>
         <div className="card">
-          <div className="muted">Fraud Rate</div>
+          <div className="muted">📊 Fraud Rate</div>
           <div className="kpi-value">{((summary.fraud_rate ?? 0) * 100).toFixed(1)}%</div>
         </div>
       </div>
@@ -93,12 +101,31 @@ export default function Dashboard() {
           <h3>Fraud Timeline</h3>
           <div className="chart-box">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data?.timeline || []}>
+              <AreaChart data={data?.timeline || []} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="fraudGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(99,137,185,0.1)" />
                 <XAxis dataKey="month" stroke="#94a3b8" />
                 <YAxis stroke="#94a3b8" />
-                <Tooltip />
-                <Bar dataKey="flagged" fill="#f59e0b" />
-              </BarChart>
+                <Tooltip
+                  contentStyle={{
+                    background: "#0a1628",
+                    border: "1px solid rgba(6,182,212,0.2)",
+                    borderRadius: 8,
+                  }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="flagged"
+                  stroke="#06b6d4"
+                  strokeWidth={2}
+                  fill="url(#fraudGradient)"
+                />
+              </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>

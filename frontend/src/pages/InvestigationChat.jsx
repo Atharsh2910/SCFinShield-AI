@@ -5,6 +5,9 @@ import { useParams } from "react-router-dom";
 import { getCase } from "../services/fraudService";
 import { askQuestion, endInvestigation, getHistory, startInvestigation } from "../services/investigationService";
 import { useFraudStore } from "../context/FraudContext";
+import FraudScoreBadge from "../components/FraudScoreBadge";
+import SignalBreakdown from "../components/SignalBreakdown";
+import AlertNarrative from "../components/AlertNarrative";
 
 export default function InvestigationChat() {
   const { caseId } = useParams();
@@ -63,22 +66,40 @@ export default function InvestigationChat() {
               <p><strong>{fraudCase.case_number}</strong></p>
               <p className="muted">Decision: {fraudCase.decision}</p>
               <p className="muted">Severity: {fraudCase.severity}</p>
-              <p>{fraudCase.alert_narrative}</p>
+
+              <div style={{ marginTop: 16 }}>
+                <FraudScoreBadge decision={fraudCase?.decision} score={fraudCase?.fraud_score || 0} />
+              </div>
+
+              <div style={{ marginTop: 20 }}>
+                <h4 style={{ marginBottom: 8 }}>Signal Breakdown</h4>
+                <SignalBreakdown scores={fraudCase?.ensemble_scores || {}} />
+              </div>
+
+              <div style={{ marginTop: 20 }}>
+                <h4 style={{ marginBottom: 8 }}>Alert</h4>
+                <AlertNarrative
+                  narrative={fraudCase?.alert_narrative || ""}
+                  citations={fraudCase?.regulation_citations || []}
+                />
+              </div>
             </>
           ) : (
             <p className="muted">Loading case...</p>
           )}
-          <button className="button" onClick={() => startMutation.mutate()} disabled={!caseId}>
-            {investigationSessionId ? "Session Ready" : "Start Investigation"}
-          </button>
-          <button
-            className="button secondary"
-            style={{ marginLeft: 8 }}
-            onClick={() => endMutation.mutate()}
-            disabled={!investigationSessionId}
-          >
-            End Session
-          </button>
+          <div style={{ marginTop: 20 }}>
+            <button className="button" onClick={() => startMutation.mutate()} disabled={!caseId}>
+              {investigationSessionId ? "Session Ready" : "Start Investigation"}
+            </button>
+            <button
+              className="button secondary"
+              style={{ marginLeft: 8 }}
+              onClick={() => endMutation.mutate()}
+              disabled={!investigationSessionId}
+            >
+              End Session
+            </button>
+          </div>
         </div>
 
         <div className="card">
