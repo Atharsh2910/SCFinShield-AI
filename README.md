@@ -21,8 +21,7 @@ SCFinShield-AI is an advanced fraud detection and management platform designed f
 - **Backend**: FastAPI 0.115.0 with Python 3.11
 - **Frontend**: React 18.3.1 with Vite and modern UI libraries
 - **Databases**: 
-  - Supabase (PostgreSQL) for relational data
-  - Neo4j Aura for graph-based analysis
+  - Supabase (PostgreSQL) for relational data and graph persistence
   - Pinecone for vector embeddings
 - **ML & AI**: LangChain, LangGraph, Anthropic API, XGBoost, PyTorch
 - **Feature Store**: Feast for ML feature management
@@ -48,7 +47,7 @@ SCFinShield-AI/
 │   │   └── security.py
 │   ├── db/
 │   │   ├── supabase_client.py
-│   │   ├── neo4j_client.py
+│   │   ├── graph.py
 │   │   └── pinecone_client.py
 │   ├── models/
 │   │   ├── invoice.py
@@ -175,11 +174,11 @@ SCFinShield-AI/
 │   └── docker-compose.yml
 │
 ├── scripts/
-│   ├── setup.sh
-│   ├── run_backend.sh
-│   ├── run_frontend.sh
-│   ├── deploy.sh
-│   └── migrate_db.sh
+│   ├── setup_supabase.py
+│   ├── setup_graph.py
+│   ├── seed_demo_data.py
+│   ├── populate_all.py
+│   └── preflight_check.py
 │
 ├── .env.example
 ├── .gitignore
@@ -227,11 +226,6 @@ Edit the `.env` file and add your credentials:
 # Supabase
 SUPABASE_URL=your_supabase_url
 SUPABASE_KEY=your_supabase_key
-
-# Neo4j
-NEO4J_URI=bolt://your_neo4j_instance:7687
-NEO4J_USERNAME=neo4j
-NEO4J_PASSWORD=your_password
 
 # Pinecone
 PINECONE_API_KEY=your_pinecone_api_key
@@ -372,15 +366,14 @@ Key configuration settings are managed through environment variables in the `.en
 
 - **Risk Thresholds**: Adjust `RISK_THRESHOLD_REVIEW` and `RISK_THRESHOLD_HOLD` to control fraud detection sensitivity
 - **CORS Settings**: Modify allowed origins in the FastAPI configuration
-- **Database Connections**: Update connection strings for Supabase, Neo4j, and Pinecone
+- **Database Connections**: Update connection strings for Supabase and Pinecone
 - **API Keys**: Store and manage third-party API credentials
 
 ## Database Setup
 
 The system uses three primary databases:
 
-1. **Supabase (PostgreSQL)**: Stores transaction data, users, and audit logs
-2. **Neo4j**: Manages supply chain relationship graphs and entity connections
-3. **Pinecone**: Stores vector embeddings for similarity searches
+1. **Supabase (PostgreSQL)**: Stores transaction data, users, audit logs, and graph edges for NetworkX in-memory graphs
+2. **Pinecone**: Stores vector embeddings for similarity searches
 
-Ensure all three services are accessible and properly configured before starting the application.
+Ensure both services are accessible and properly configured before starting the application.
