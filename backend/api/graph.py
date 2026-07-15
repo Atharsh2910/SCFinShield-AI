@@ -4,12 +4,12 @@ from typing import Any
 
 from fastapi import APIRouter
 
-from backend.db.neo4j import run_query
 from backend.schemas.graph import NetworkGraphResponse
 from backend.services.graph.analytics import (
     detect_carousel_trades,
     get_concentration_risk,
     get_entity_network,
+    get_graph_stats,
     trace_cascade,
 )
 
@@ -37,12 +37,5 @@ async def concentration(lender_id: str) -> list[dict[str, Any]]:
 
 
 @router.get("/graph/stats")
-async def graph_stats() -> dict[str, Any]:
-    nodes = await run_query("MATCH (n) RETURN count(n) AS node_count")
-    edges = await run_query("MATCH ()-[r]->() RETURN count(r) AS edge_count")
-    return {
-        "node_count": int(nodes[0].get("node_count", 0)) if nodes else 0,
-        "edge_count": int(edges[0].get("edge_count", 0)) if edges else 0,
-        "fraud_clusters": [],
-    }
-
+async def graph_stats_endpoint() -> dict[str, Any]:
+    return await get_graph_stats()

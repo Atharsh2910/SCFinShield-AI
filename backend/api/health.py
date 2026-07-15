@@ -4,7 +4,7 @@ from fastapi import APIRouter
 
 from backend.core.config import get_settings
 from backend.core.constants import PineconeNamespace
-from backend.db.neo4j import get_neo4j_driver
+from backend.db.supabase import get_supabase_client as _get_supabase
 from backend.db.pinecone import get_pinecone_index
 from backend.db.supabase import get_supabase_client
 from backend.services.ml.model_loader import ModelRegistry
@@ -56,16 +56,17 @@ async def health_models() -> dict:
 @router.get("/health/dependencies")
 async def health_dependencies() -> dict:
     """
-    Lightweight check for external dependencies (Neo4j, Pinecone).
+    Lightweight check for external dependencies (graph DB via Supabase, Pinecone).
     """
-    neo4j_ok = False
+    graph_ok = False
     pinecone_ok = False
 
     try:
-        driver = await get_neo4j_driver()
-        neo4j_ok = driver is not None
+        client = _get_supabase()
+        result = client.table("invoices").select("id").limit(1).execute()
+        graph_ok = result is not None
     except Exception:
-        neo4j_ok = False
+        graph_ok = False
 
     try:
         index = get_pinecone_index()
@@ -74,7 +75,7 @@ async def health_dependencies() -> dict:
         pinecone_ok = False
 
     return {
-        "neo4j": neo4j_ok,
+        "graph_db": graph_ok,
         "pinecone": pinecone_ok,
     }
 

@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.api import auth, fraud, health, invoice, graph, investigation, dashboard, simulator, knowledge_base
 from backend.core.config import get_settings
 from backend.core.logger import setup_logger
-from backend.db.neo4j import close_neo4j_driver
+from backend.db.graph import close_graph
 from backend.services.ml.model_loader import ModelRegistry
 
 logger = setup_logger()
@@ -23,7 +23,7 @@ async def lifespan(app: FastAPI):
     logger.info("ML models loaded")
     yield
     # Shutdown
-    await close_neo4j_driver()
+    await close_graph()
     logger.info("Shutting down SCFinShield-AI backend")
 
 
@@ -36,7 +36,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.allowed_origins,
+    allow_origins=settings.allowed_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

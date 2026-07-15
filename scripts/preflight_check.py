@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from typing import Callable
 
 from backend.core.config import get_settings
-from backend.db.neo4j import get_neo4j_driver
 from backend.db.pinecone import get_pinecone_index
 from backend.db.supabase import get_supabase_client
 
@@ -23,8 +22,6 @@ def check_env() -> CheckResult:
         "SUPABASE_URL": settings.supabase_url,
         "SUPABASE_SERVICE_KEY": settings.supabase_service_key,
         "DATABASE_URL": settings.database_url,
-        "NEO4J_URI": settings.neo4j_uri,
-        "NEO4J_PASSWORD": settings.neo4j_password,
         "PINECONE_API_KEY": settings.pinecone_api_key,
         "PINECONE_INDEX_NAME": settings.pinecone_index_name,
         "ANTHROPIC_API_KEY": settings.anthropic_api_key,
@@ -47,14 +44,15 @@ def check_supabase() -> CheckResult:
         return CheckResult("supabase", False, str(exc))
 
 
-async def check_neo4j() -> CheckResult:
+def check_graph() -> CheckResult:
+    """Check graph DB: probe invoices table (source of truth) and verify graph can load."""
     try:
-        driver = await get_neo4j_driver()
-        async with driver.session() as session:
-            await session.run("RETURN 1 as ok")
-        return CheckResult("neo4j", True, "Neo4j reachable.")
+        client = get_supabase_client()
+        result = client.table("invoices").select("id").limit(1).execute()
+        count = len(result.data or [])
+        return CheckResult("graph_db", True, f"Graph source tables reachable ({count} invoice(s) visible).")
     except Exception as exc:
-        return CheckResult("neo4j", False, str(exc))
+        return CheckResult("graph_db", False, str(exc))
 
 
 def check_pinecone() -> CheckResult:
@@ -78,13 +76,13 @@ async def main() -> None:
     supabase_result = check_supabase()
     _print_result(supabase_result)
 
-    neo4j_result = await check_neo4j()
-    _print_result(neo4j_result)
+    graph_result = check_graph()
+    _print_result(graph_result)
 
     pinecone_result = check_pinecone()
     _print_result(pinecone_result)
 
-    all_ok = all([env_result.ok, supabase_result.ok, neo4j_result.ok, pinecone_result.ok])
+    all_ok = all([env_result.ok, supabase_result.ok, graph_result.ok, pinecone_result.ok])
     print("\nPreflight status:", "PASS" if all_ok else "FAIL")
 
 

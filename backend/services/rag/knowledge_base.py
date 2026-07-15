@@ -4,7 +4,10 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+try:
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+except ImportError:
+    from langchain.text_splitter import RecursiveCharacterTextSplitter  # type: ignore[no-redef]
 
 from backend.core.constants import PineconeNamespace
 from backend.db.pinecone import get_pinecone_index

@@ -6,7 +6,7 @@ sqlalchemy
 asyncpg
 supabase
 neo4j
-pinecone-client
+pinecone
 langchain
 langchain-anthropic
 langchain-community

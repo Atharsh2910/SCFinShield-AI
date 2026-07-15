@@ -25,10 +25,6 @@ class Settings(BaseSettings):
     )
     database_url: str = Field(default="", validation_alias="DATABASE_URL")
 
-    # Neo4j
-    neo4j_uri: str = Field(default="", validation_alias="NEO4J_URI")
-    neo4j_username: str = Field(default="neo4j", validation_alias="NEO4J_USERNAME")
-    neo4j_password: str = Field(default="", validation_alias="NEO4J_PASSWORD")
 
     # Pinecone
     pinecone_api_key: str = Field(default="", validation_alias="PINECONE_API_KEY")
@@ -57,8 +53,17 @@ class Settings(BaseSettings):
     lsh_threshold: float = 0.7
     duplicate_similarity_threshold: float = 0.85
 
-    # CORS
-    allowed_origins: List[str] = ["http://localhost:5173"]
+    # CORS — stored as plain string, split at runtime to avoid JSON-decode issues
+    allowed_origins: str = Field(
+        default="http://localhost:5173",
+        validation_alias="ALLOWED_ORIGINS",
+    )
+
+    @property
+    def allowed_origins_list(self) -> List[str]:
+        """Return allowed origins as a list, splitting on commas."""
+        raw = self.allowed_origins.strip().strip('"').strip("'")
+        return [o.strip() for o in raw.split(",") if o.strip()]
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -67,13 +72,6 @@ class Settings(BaseSettings):
         populate_by_name=True,
         protected_namespaces=("settings_",),
     )
-
-    @field_validator("allowed_origins", mode="before")
-    @classmethod
-    def parse_allowed_origins(cls, value):
-        if isinstance(value, str):
-            return [origin.strip() for origin in value.split(",") if origin.strip()]
-        return value
 
 
 @lru_cache()

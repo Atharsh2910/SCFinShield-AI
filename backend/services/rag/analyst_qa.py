@@ -1,25 +1,22 @@
 from __future__ import annotations
 
+from collections import deque
 from typing import Any, Dict
 
-from langchain.memory import ConversationBufferWindowMemory
-
 from backend.core.config import get_settings
-from backend.services.rag.retrieval_chain import build_analyst_rag_chain, get_llm
+from backend.core.constants import PineconeNamespace
+from backend.services.rag.retrieval_chain import _retrieve_context, build_analyst_rag_chain, get_llm
 
 _sessions: Dict[str, Dict[str, Any]] = {}
+
+_MAX_HISTORY = 10  # Keep last N message pairs in memory
 
 
 def get_or_create_session(investigation_id: str) -> Dict[str, Any]:
     if investigation_id not in _sessions:
-        memory = ConversationBufferWindowMemory(
-            memory_key="chat_history",
-            return_messages=True,
-            k=10,
-        )
         settings = get_settings()
         _sessions[investigation_id] = {
-            "memory": memory,
+            "history": deque(maxlen=_MAX_HISTORY * 2),  # alternating user/assistant
             "llm_enabled": bool(settings.anthropic_api_key),
             "fraud_state": {},
             "messages": [],
@@ -33,13 +30,13 @@ async def ask_analyst_question(
     fraud_state: Dict[str, Any],
 ) -> Dict[str, Any]:
     """
-    Answer analyst questions about a fraud case using conversation memory.
+    Answer analyst questions about a fraud case using conversation history.
     Augments the LLM context with the current fraud investigation state.
     """
     session = get_or_create_session(investigation_id)
     session["fraud_state"] = fraud_state
 
-    context = (
+    context_header = (
         "Current fraud investigation state:\n"
         f"- Invoice: {fraud_state.get('invoice', {}).get('invoice_number', 'N/A')}\n"
         f"- Fraud Score: {float(fraud_state.get('ensemble_score', 0) or 0):.2%}\n"
@@ -49,47 +46,37 @@ async def ask_analyst_question(
         f"- Alert Narrative: {fraud_state.get('narrative', 'Not generated yet')}\n"
     )
 
-    augmented_question = f"{context}\n\nAnalyst question: {question}"
+    history_lines = list(session["history"])
+    history_context = "\n".join(history_lines[-6:]) if history_lines else ""
 
-    memory: ConversationBufferWindowMemory = session["memory"]
-    history = memory.load_memory_variables({}).get("chat_history", [])
-    history_context = "\n".join(
-        getattr(message, "content", str(message))
-        for message in history[-6:]
+    augmented_question = (
+        f"{history_context}\n\n{context_header}\n\nAnalyst question: {question}"
+        if history_context
+        else f"{context_header}\n\nAnalyst question: {question}"
     )
-
-    prompt = augmented_question if not history_context else f"{history_context}\n\n{augmented_question}"
 
     answer = ""
     citations: list[dict[str, Any]] = []
+
     try:
-        rag_chain = build_analyst_rag_chain()
-        result = rag_chain.invoke({"query": prompt})
-        answer = str(result.get("result") or "").strip()
-        for doc in result.get("source_documents", []) or []:
-            metadata = getattr(doc, "metadata", {}) or {}
-            citations.append(
-                {
-                    "title": metadata.get("title", ""),
-                    "source": metadata.get("source", ""),
-                    "category": metadata.get("category", ""),
-                }
-            )
+        rag_context, citations = _retrieve_context(augmented_question, PineconeNamespace.FRAUD_CASES)
+        chain = build_analyst_rag_chain()
+        answer = await chain.ainvoke({"context": rag_context, "question": augmented_question})
+        answer = str(answer).strip()
     except Exception:
         settings = get_settings()
         if settings.anthropic_api_key:
-            response = await get_llm().ainvoke(prompt)
-            answer = str(response.content).strip()
+            try:
+                response = await get_llm().ainvoke(augmented_question)
+                answer = str(response.content).strip()
+            except Exception:
+                answer = _fallback_answer()
         else:
-            answer = (
-                "Analyst Q&A is in fallback mode. The current investigation state has been captured, "
-                "but retrieval-backed answers will become available after Pinecone and Anthropic credentials are configured."
-            )
+            answer = _fallback_answer()
 
-    memory.save_context(
-        {"input": question},
-        {"output": answer},
-    )
+    # Update rolling history
+    session["history"].append(f"User: {question}")
+    session["history"].append(f"Assistant: {answer}")
 
     session["messages"].append({"role": "user", "content": question, "citations": []})
     session["messages"].append({"role": "assistant", "content": answer, "citations": citations})
@@ -102,6 +89,13 @@ async def ask_analyst_question(
     }
 
 
+def _fallback_answer() -> str:
+    return (
+        "Analyst Q&A is in fallback mode. The current investigation state has been captured, "
+        "but retrieval-backed answers will become available after Pinecone and Anthropic credentials are configured."
+    )
+
+
 def get_session_messages(investigation_id: str) -> list[dict[str, Any]]:
     session = _sessions.get(investigation_id)
     if not session:
@@ -111,4 +105,3 @@ def get_session_messages(investigation_id: str) -> list[dict[str, Any]]:
 
 def delete_session(investigation_id: str) -> bool:
     return _sessions.pop(investigation_id, None) is not None
-

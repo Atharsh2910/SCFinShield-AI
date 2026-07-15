@@ -3,16 +3,15 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Any, Dict
 
-from langchain.chains import RetrievalQA
-from langchain.prompts import PromptTemplate
+from langchain_core.prompts import PromptTemplate
+from langchain_core.output_parsers import StrOutputParser
 from langchain_anthropic import ChatAnthropic
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_community.vectorstores import Pinecone as LangChainPinecone
 
 from backend.core.config import get_settings
 from backend.core.constants import PineconeNamespace
 from backend.core.exceptions import RAGRetrievalError
-from backend.db.pinecone import PineconeConfigurationError, get_pinecone_index
+from backend.db.pinecone import PineconeConfigurationError
+from backend.services.rag.knowledge_base import search_namespace
 
 ALERT_PROMPT = PromptTemplate(
     input_variables=["context", "question"],
@@ -49,63 +48,45 @@ ANALYST_CONTEXT_PROMPT = PromptTemplate(
 
 
 @lru_cache()
-def get_langchain_embeddings() -> HuggingFaceEmbeddings:
-    settings = get_settings()
-    return HuggingFaceEmbeddings(model_name=settings.embedding_model)
-
-
-@lru_cache()
-def get_regulations_vectorstore() -> LangChainPinecone:
-    index = get_pinecone_index()
-    return LangChainPinecone(
-        index=index,
-        embedding=get_langchain_embeddings(),
-        text_key="text",
-        namespace=PineconeNamespace.REGULATIONS,
-    )
-
-
-@lru_cache()
-def get_fraud_cases_vectorstore() -> LangChainPinecone:
-    index = get_pinecone_index()
-    return LangChainPinecone(
-        index=index,
-        embedding=get_langchain_embeddings(),
-        text_key="text",
-        namespace=PineconeNamespace.FRAUD_CASES,
-    )
-
-
-@lru_cache()
 def get_llm() -> ChatAnthropic:
     settings = get_settings()
     if not settings.anthropic_api_key:
         raise RAGRetrievalError("Anthropic credentials are missing. Set ANTHROPIC_API_KEY.")
     return ChatAnthropic(
         model=settings.claude_model,
-        anthropic_api_key=settings.anthropic_api_key,
+        api_key=settings.anthropic_api_key,  # type: ignore[arg-type]
         max_tokens=1000,
     )
 
 
-def build_rag_chain() -> RetrievalQA:
-    return RetrievalQA.from_chain_type(
-        llm=get_llm(),
-        retriever=get_regulations_vectorstore().as_retriever(search_kwargs={"k": 5}),
-        chain_type="stuff",
-        chain_type_kwargs={"prompt": ALERT_PROMPT},
-        return_source_documents=True,
-    )
+def _retrieve_context(query: str, namespace: str, top_k: int = 5) -> tuple[str, list[dict[str, Any]]]:
+    """Retrieve relevant chunks from Pinecone and return (context_text, source_documents)."""
+    matches = search_namespace(query_text=query, namespace=namespace, top_k=top_k)
+    texts: list[str] = []
+    sources: list[dict[str, Any]] = []
+    for match in matches:
+        meta = match.get("metadata", {})
+        chunk_text = meta.get("text", "")
+        if chunk_text:
+            texts.append(f"[{meta.get('title', 'Unknown')}] {chunk_text}")
+        sources.append({
+            "title": meta.get("title", ""),
+            "source": meta.get("source", ""),
+            "category": meta.get("category", ""),
+        })
+    return "\n\n".join(texts), sources
 
 
-def build_analyst_rag_chain() -> RetrievalQA:
-    return RetrievalQA.from_chain_type(
-        llm=get_llm(),
-        retriever=get_fraud_cases_vectorstore().as_retriever(search_kwargs={"k": 4}),
-        chain_type="stuff",
-        chain_type_kwargs={"prompt": ANALYST_CONTEXT_PROMPT},
-        return_source_documents=True,
-    )
+def build_rag_chain():
+    """Build an LCEL fraud-alert chain using the regulations namespace."""
+    llm = get_llm()
+    return ALERT_PROMPT | llm | StrOutputParser()
+
+
+def build_analyst_rag_chain():
+    """Build an LCEL analyst Q&A chain using the fraud_cases namespace."""
+    llm = get_llm()
+    return ANALYST_CONTEXT_PROMPT | llm | StrOutputParser()
 
 
 async def generate_fraud_narrative(
@@ -135,10 +116,9 @@ async def generate_fraud_narrative(
     )
 
     try:
+        context, citations = _retrieve_context(signal_summary, PineconeNamespace.REGULATIONS)
         chain = build_rag_chain()
-        result = chain.invoke({"query": signal_summary})
-        narrative = result.get("result", "")
-        citations = _extract_citations(result.get("source_documents", []) or [])
+        narrative = await chain.ainvoke({"context": context, "question": signal_summary})
         if not narrative.strip():
             raise RAGRetrievalError("No narrative returned from retrieval chain")
         return {
@@ -185,4 +165,3 @@ def _build_fallback_narrative(
         "have not been configured. Once Pinecone and Anthropic credentials are added, this narrative will include "
         "grounded citations from indexed regulations."
     )
-
